@@ -1,5 +1,11 @@
-h1
-{
+body{
+	margin:0px;
+	padding:0px;
+	overflow:hidden;
+	font-family: 'Modak';
+}
+
+h1 {
 	color:red;
 	text-align:center;
-	}
+}
