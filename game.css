@@ -3,3 +3,26 @@ h1
 	color:red;
 	text-align:center;
 	}
+
+table { 
+    display: table;
+    border-collapse: separate;
+    border-spacing: 12px;
+    border-color: none;
+}
+
+.rotateRight90 {
+    -webkit-transform: rotate(90deg);
+    -moz-transform: rotate(90deg);
+    -o-transform: rotate(90deg);
+    -ms-transform: rotate(90deg);
+    transform: rotate(90deg);
+}
+
+.rotateLeft90 {
+    -webkit-transform: rotate(-90deg);
+    -moz-transform: rotate(-90deg);
+    -o-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+}
