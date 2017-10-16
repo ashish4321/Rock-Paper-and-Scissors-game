@@ -20,7 +20,7 @@ function adjustScreen(){
 function startScreen(){
 	var indexOfBigLetter = 0;
 	var bigLetterSizeBonus = 0;
-	var bigLetterSizeBonusChangeRate = 5;
+	var bigLetterSizeBonusChangeRate = 10;
 	const titleText = 'Rock Paper Scissors';
 
 
@@ -53,6 +53,7 @@ function startScreen(){
 		//These three color stops should make the text appear kind of shiny.
 
 		var currentX = textDim.x;
+		//Curent x will keep track of where our next letter should be drawn.
 
 		ctx.fillStyle = textGradient;
 
@@ -79,18 +80,23 @@ function startScreen(){
 				//This stops the increase of the font size if the letter is a space.
 			}
 
-			else ctx.font = fontSize + 'px Modak';//So the rest of the letters end up being the right size.
-
 			ctx.fillText(letter, currentX, textDim.y);
+			//ctx.strokeText(titleText, textDim.x, textDim.y);
+
+			ctx.font = fontSize + 'px Modak';
 
 			currentX = currentX + ctx.measureText(letter).width;
-		};
-		//ctx.strokeText(titleText, textDim.x, textDim.y);
+		}
+
+	};
+
+	var paintItems = function(){
 
 	};
 
 	var animateScreen = function(){
 		paintGradient();
+		paintItems();
 		paintTitle();
 
 		setTimeout(animateScreen, 50);
