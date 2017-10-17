@@ -16,12 +16,30 @@ function adjustScreen(){
 
 }
 
+function chooseFrom(anArray){ //This function chooses something from an array.
+  return anArray[Math.floor(Math.random() * anArray.length)];
+}
+
 
 function startScreen(){
 	var indexOfBigLetter = 0;
 	var bigLetterSizeBonus = 0;
 	var bigLetterSizeBonusChangeRate = 10;
 	const titleText = 'Rock Paper Scissors';
+
+	var images = [];
+	var sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
+	var items = [];
+
+	sources.forEach(function(element){
+		var image = new Image();
+
+		image.onload = function(){
+			images.push(image);
+		}
+
+		image.src = element;
+	});
 
 
 	var paintGradient = function(){
@@ -91,7 +109,27 @@ function startScreen(){
 	};
 
 	var paintItems = function(){
+		if(images.length !== sources.length)return;
 
+		for(var x = 0; x < 6; x++){
+			for(var heightUsed = 0; heightUsed < (canvas.height+32); heightUsed = heightUsed + 32){
+				items.push({
+					image:chooseFrom(images), //just a random image of rock, paper, or scissors.
+					y:heightUsed + (Math.round(Math.random()*20)-10), //32 is height of medium image
+					x:((x>2) ? canvas.width-canvas.width/25-(32*(x-3)) : canvas.width/25 - (32*(x-1))) + (Math.round(Math.random()*20)-10),
+					rot:0,
+					descentVelocity:Math.round(Math.random()*5)+1
+				})
+			}
+		}
+
+		paintItems = function(){
+			items.forEach(function(item){
+				item.y = item.y + item.descentVelocity;
+				if(item.y > canvas.height)item.y = -32;
+				ctx.drawImage(item.image, item.x, item.y);
+			});
+		}
 	};
 
 	var animateScreen = function(){
@@ -99,7 +137,7 @@ function startScreen(){
 		paintItems();
 		paintTitle();
 
-		setTimeout(animateScreen, 50);
+		requestAnimationFrame(animateScreen);
 
 	};
 
