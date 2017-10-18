@@ -35,6 +35,9 @@ function adjustScreen(){
 
 
 function startScreen(){
+	//On or off variable
+	var startScreenOn = true;
+
 	//Title variables
 	var indexOfBigLetter = 0;
 	var bigLetterSizeBonus = 0;
@@ -46,42 +49,34 @@ function startScreen(){
 	const sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
 	var items = [];
 
-	//Buttons variables
+	//Buttons variables. Right now they just contain a name, and some code to run when they're clicked, but later they will get bounding rects that allow them to be clicked.
 	const buttons = [
 		{
 			name:'Adventure',
-			onClick:function(){
-
-			}
+			onClick:undefined
 		},
 		{
 			name:'Craft & Prepare',
-			onClick:function(){
-
-			}
+			onClick:undefined
 		},
 		{
 			name:'Search & Salvage',
-			onClick:function(){
-
-			}
+			onClick:searchAndSalvage
 		},
 		{
 			name:'Information',
-			onClick:function(){
-
-			}
+			onClick:undefined
 		}
 	]
 
-	sources.forEach(function(element){
-		var image = new Image();
+	sources.forEach(function(element){// Pretty simplistic, all we do here is
+		var image = new Image();// Define a new image,
 
-		image.onload = function(){
-			images.push(image);
+		image.onload = function(){//Tell the image that when it's done loading,
+			images.push(image);// Put it in an array for us.
 		}
 
-		image.src = element;
+		image.src = element;// And then we tell it where to find the aforementioned image.
 	});
 
 
@@ -93,7 +88,7 @@ function startScreen(){
 	};
 
 	var paintTitle = function(){
-		var fontSize = canvas.width/12;
+		var fontSize = canvas.width/12;//The width/12 part makes the font size scale to the screen size.
 		ctx.font = fontSize + 'px Modak';//define font
 
 		var textDim = ctx.measureText(titleText);	 	//We'll need the text's dimensions to position it correctly.
@@ -111,10 +106,10 @@ function startScreen(){
 		var currentX = textDim.x;
 		//Curent x will keep track of where our next letter should be drawn.
 
-		ctx.fillStyle = textGradient;
+		ctx.fillStyle = textGradient;//Use the shiny metal gradient that we just made as our brush
 
 		for(var letterIndex = 0; letterIndex < titleText.length; letterIndex++){
-			var letter = titleText[letterIndex];
+			var letter = titleText[letterIndex];//Letter will be what we draw this loop.s
 
 			if(letterIndex == indexOfBigLetter){//If this guy is the big letter,
 				ctx.font = (fontSize + bigLetterSizeBonus) + 'px Modak';//Make the font size change
@@ -140,37 +135,40 @@ function startScreen(){
 			ctx.strokeStyle = 'darkgray';
 			ctx.strokeText(letter, currentX, textDim.y);
 
-			ctx.font = fontSize + 'px Modak';
+			ctx.font = fontSize + 'px Modak';//Could probably use ctx.fontSize = fontSize, but I don't trust ctx.fontSize.
 
-			currentX = currentX + ctx.measureText(letter).width;
+			currentX = currentX + ctx.measureText(letter).width;//Move the text forward, essentially
 		}
 
 	};
 
 	var paintItems = function(){
+		//Return if all of the sources aren't loaded, because then we have nothing to draw.
 		if(images.length !== sources.length)return;
 
-		items = [];
+		items = [];//We'll fill this guy up with the next loop, then we'll rewrite the function so that it just draws everything in this array.
 
+		//Six here because there are six columns
 		for(var x = 0; x < 6; x++){
+			//This for loop adds one row for each row that is needed.
 			for(var heightUsed = 0; heightUsed < (canvas.height+32); heightUsed = heightUsed + 32){
 				items.push({
 					image:chooseFrom(images), //just a random image of rock, paper, or scissors.
-					y:heightUsed + (Math.round(Math.random()*20)-10), //32 is height of medium image
-					x:((x>2) ? canvas.width-canvas.width/25-(32*(x-3)) : canvas.width/25 - (32*(x-1))) + (Math.round(Math.random()*20)-10),
-					rot:0,
-					descentVelocity:Math.random()*5+2
+					y:heightUsed + (Math.round(Math.random()*20)-10), //The randomness is to stop them from appearing in rows.
+					x:((x>2) ? canvas.width-canvas.width/25-(32*(x-3)) : canvas.width/25 - (32*(x-1))) + (Math.round(Math.random()*20)-10), //This ternary operator decides which side of the screen the item should go on.
+					rot:0, //Maybe add rotation later?
+					descentVelocity:Math.random()*5+2 //So this way the max velocity is anywhere from 2 to 7
 				})
 			}
 		}
 
-		callOnResize.push(paintItems);
+		callOnResize.push(paintItems);//We push the first version of paintItems into callOnResize, so if the screen changes the above code resets the waterfall.
 
-		paintItems = function(){
+		paintItems = function(){//Here we redfine the function, just for drawing this time because we don't need to initialize the item array each time we go to draw it.
 			items.forEach(function(item){
-				item.y = item.y + item.descentVelocity;
-				if(item.y > canvas.height)item.y = -32;
-				ctx.drawImage(item.image, item.x, item.y);
+				item.y = item.y + item.descentVelocity;//Add the descent velocity: make 'em move downward.
+				if(item.y > canvas.height)item.y = -32;//Reset the height if needed
+				ctx.drawImage(item.image, item.x, item.y);//Draw the item.
 			});
 		}
 	};
@@ -190,6 +188,8 @@ function startScreen(){
 			dimensions.x = canvas.width/2 - dimensions.width/2;			    //X and Y are defined outside of the object because
 			dimensions.y = canvas.height*0.4 + canvas.height/7*index;	   //they are reliant upon those inside the box.
 
+			element.dimensions = dimensions;//Here we give the dimensions to the objects in the buttons array so that they can be used to test for clicking.
+
 			ctx.fillRect(dimensions.x, dimensions.y, dimensions.width, dimensions.height);
 			ctx.strokeRect(dimensions.x, dimensions.y, dimensions.width, dimensions.height);
 
@@ -200,6 +200,7 @@ function startScreen(){
 			ctx.fillStyle = backgroundGradient;
 
 			var textSize = (ctx.measureText(element.name).width < dimensions.width - 5) ? ctx.measureText(element.name).width : dimensions.width - 5;
+			//This way text size is effected by max-width too.
 
 			ctx.fillText(  element.name, canvas.width/2 - textSize/2, dimensions.y + fontSize*1.1, dimensions.width - 5);
 			ctx.strokeText(element.name, canvas.width/2 - textSize/2, dimensions.y + fontSize*1.1, dimensions.width - 5);
@@ -208,6 +209,9 @@ function startScreen(){
 	}
 
 	var animateScreen = function(){
+
+		if(!startScreenOn)return;
+
 		paintGradient();
 		paintItems();
 		paintTitle();
@@ -219,6 +223,23 @@ function startScreen(){
 
 	animateScreen();
 
+	$(document).on('click', function(event){
+		buttons.forEach(function(button){
+			var bDim = button.dimensions;
+			if(event.clientX  >  bDim.x  &&  event.clientX  <  bDim.x + bDim.width  &&  event.clientY  >  bDim.y  &&  event.clientY  <  bDim.y + bDim.height){
+				if(button.onClick){//Notice that we're testing to see if the function exists, not if it returns true.
+					startScreenOn = false;
+					paintGradient();
+					button.onClick();
+				}
+			}
+		});
+	});
+
+}
+
+function searchAndSalvage(){
+	console.log('I do exist, you know.');
 }
 
 //End of Universal Functions
