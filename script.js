@@ -1,12 +1,21 @@
 var canvas;//  We'll define these
 var ctx;//	   guys later.
 
+//Background variables
 var primaryColor   = '#005dff';
 var secondaryColor = '#81aaef';
+var backgroundGradient;//This guy is the gradient for the background.
+
+//These are called on the screen's resize.
+var callOnResize = [];
 
 
 //Universal Functions. 
 //Generally speaking, the more simple the function, the higher up in the script it is.
+
+function chooseFrom(anArray){ //This function chooses something from an array.
+  return anArray[Math.floor(Math.random() * anArray.length)];
+}
 
 
 function adjustScreen(){
@@ -14,22 +23,56 @@ function adjustScreen(){
 	canvas.width  = $(window).width();//Get the screen's width to fill all available space.
 	canvas.height = $(window).height();//Get the screen's height to fill all available space.
 
-}
+	backgroundGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);//define bounds for gradient
+	backgroundGradient.addColorStop(0, primaryColor);//Define first color stop
+	backgroundGradient.addColorStop(1, secondaryColor);//Define second color stop
 
-function chooseFrom(anArray){ //This function chooses something from an array.
-  return anArray[Math.floor(Math.random() * anArray.length)];
+	callOnResize.forEach(function(element){//Here we'll just loop through
+		element(); //everything in callOnResize
+	});
+
 }
 
 
 function startScreen(){
+	//Title variables
 	var indexOfBigLetter = 0;
 	var bigLetterSizeBonus = 0;
 	var bigLetterSizeBonusChangeRate = 10;
 	const titleText = 'Rock Paper Scissors';
 
+	//Waterfall of items variables
 	var images = [];
-	var sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
+	const sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
 	var items = [];
+
+	//Buttons variables
+	const buttons = [
+		{
+			name:'Adventure',
+			onClick:function(){
+
+			}
+		},
+		{
+			name:'Craft & Prepare',
+			onClick:function(){
+
+			}
+		},
+		{
+			name:'Search & Salvage',
+			onClick:function(){
+
+			}
+		},
+		{
+			name:'Information',
+			onClick:function(){
+
+			}
+		}
+	]
 
 	sources.forEach(function(element){
 		var image = new Image();
@@ -43,24 +86,19 @@ function startScreen(){
 
 
 	var paintGradient = function(){
-		var diagonalGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-		//define bounds for gradient
 
-		diagonalGradient.addColorStop(0, primaryColor);//Define first color stop
-		diagonalGradient.addColorStop(1, secondaryColor);//Define second color stop
-
-		ctx.fillStyle = diagonalGradient;// 			   Set the gradient as our brush
+		ctx.fillStyle = backgroundGradient;// 			   Set the background gradient as our brush
 		ctx.fillRect(0, 0, canvas.width, canvas.height);// and slop it onto the screen.
 
 	};
 
 	var paintTitle = function(){
-		var fontSize = canvas.width/15;
+		var fontSize = canvas.width/12;
 		ctx.font = fontSize + 'px Modak';//define font
 
 		var textDim = ctx.measureText(titleText);	 	//We'll need the text's dimensions to position it correctly.
 		textDim.x = canvas.width/2 - textDim.width/2;	//Here we calculate the x (center)
-		textDim.y = canvas.height/3;					//and the y (top 3rd of the page)
+		textDim.y = canvas.height/4;					//and the y (top fourth of the page)
 
 		var textGradient = ctx.createLinearGradient(textDim.x, textDim.y, textDim.x+textDim.width, textDim.y);
 		//bounds for gradient
@@ -99,7 +137,8 @@ function startScreen(){
 			}
 
 			ctx.fillText(letter, currentX, textDim.y);
-			//ctx.strokeText(titleText, textDim.x, textDim.y);
+			ctx.strokeStyle = 'darkgray';
+			ctx.strokeText(letter, currentX, textDim.y);
 
 			ctx.font = fontSize + 'px Modak';
 
@@ -111,6 +150,8 @@ function startScreen(){
 	var paintItems = function(){
 		if(images.length !== sources.length)return;
 
+		items = [];
+
 		for(var x = 0; x < 6; x++){
 			for(var heightUsed = 0; heightUsed < (canvas.height+32); heightUsed = heightUsed + 32){
 				items.push({
@@ -118,10 +159,12 @@ function startScreen(){
 					y:heightUsed + (Math.round(Math.random()*20)-10), //32 is height of medium image
 					x:((x>2) ? canvas.width-canvas.width/25-(32*(x-3)) : canvas.width/25 - (32*(x-1))) + (Math.round(Math.random()*20)-10),
 					rot:0,
-					descentVelocity:Math.round(Math.random()*5)+1
+					descentVelocity:Math.random()*5+2
 				})
 			}
 		}
+
+		callOnResize.push(paintItems);
 
 		paintItems = function(){
 			items.forEach(function(item){
@@ -132,10 +175,43 @@ function startScreen(){
 		}
 	};
 
+	var paintButtons = function(){
+		buttons.forEach(function(element, index){
+
+			//Aesthetics
+			ctx.strokeStyle = 'darkgray';
+			var oldFill = ctx.fillStyle;
+
+			//This'll hold the dimensions of our box.
+			var dimensions = {
+				width:canvas.width*0.28,
+				height:canvas.height/11
+			}
+			dimensions.x = canvas.width/2 - dimensions.width/2;			    //X and Y are defined outside of the object because
+			dimensions.y = canvas.height*0.4 + canvas.height/7*index;	   //they are reliant upon those inside the box.
+
+			ctx.fillRect(dimensions.x, dimensions.y, dimensions.width, dimensions.height);
+			ctx.strokeRect(dimensions.x, dimensions.y, dimensions.width, dimensions.height);
+
+			var fontSize = canvas.height/17;
+			ctx.font = fontSize + 'px Modak';
+			//I would use ctx.fontSize here, but I want to make sure the font is Modak.
+
+			ctx.fillStyle = backgroundGradient;
+
+			var textSize = (ctx.measureText(element.name).width < dimensions.width - 5) ? ctx.measureText(element.name).width : dimensions.width - 5;
+
+			ctx.fillText(  element.name, canvas.width/2 - textSize/2, dimensions.y + fontSize*1.1, dimensions.width - 5);
+			ctx.strokeText(element.name, canvas.width/2 - textSize/2, dimensions.y + fontSize*1.1, dimensions.width - 5);
+			ctx.fillStyle = oldFill;
+		});
+	}
+
 	var animateScreen = function(){
 		paintGradient();
 		paintItems();
 		paintTitle();
+		paintButtons();
 
 		requestAnimationFrame(animateScreen);
 
