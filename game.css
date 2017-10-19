@@ -2,10 +2,20 @@ body{
 	margin:0px;
 	padding:0px;
 	overflow:hidden;
-	font-family: 'Modak';
+	font-family: 'Ubuntu', sans-serif;
+}
+
+div{
 }
 
 h1 {
-	color:red;
 	text-align:center;
+    margin-bottom:3px;
+}
+
+hr{
+    
+    border:1px solid black;
+    
+    width:80%;
 }

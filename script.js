@@ -1,4 +1,4 @@
-var canvas;//  We'll define these
+    var canvas;//  We'll define these
 var ctx;//	   guys later.
 
 //Background variables
@@ -53,15 +53,15 @@ function startScreen(){
 	const buttons = [
 		{
 			name:'Adventure',
+			onClick:startAdventure
+		},
+		{
+			name:'Change Save',
 			onClick:undefined
 		},
 		{
-			name:'Craft & Prepare',
+			name:'New Save',
 			onClick:undefined
-		},
-		{
-			name:'Search & Salvage',
-			onClick:searchAndSalvage
 		},
 		{
 			name:'Information',
@@ -223,13 +223,22 @@ function startScreen(){
 
 	animateScreen();
 
-	$(document).on('click', function(event){
+	$(document).on('click', function checkForButtons(event){
 		buttons.forEach(function(button){
 			var bDim = button.dimensions;
 			if(event.clientX  >  bDim.x  &&  event.clientX  <  bDim.x + bDim.width  &&  event.clientY  >  bDim.y  &&  event.clientY  <  bDim.y + bDim.height){
 				if(button.onClick){//Notice that we're testing to see if the function exists, not if it returns true.
-					startScreenOn = false;
-					paintGradient();
+                    //Cleanup:
+                    //Code cleanup
+					startScreenOn = false
+                    //$(document).off(checkForButtons);
+                    callOnResize = [];
+                    
+                    //Aesthetic Cleanup
+                    paintGradient();
+                    
+                    //Cleanup done.
+                    //Calling function for this button:
 					button.onClick();
 				}
 			}
@@ -238,8 +247,99 @@ function startScreen(){
 
 }
 
-function searchAndSalvage(){
-	console.log('I do exist, you know.');
+function startAdventure(){
+    //isOn boolean
+    var isPaused = false;
+    
+    //Map variables
+    var mapDim;
+    var mapGrad;
+    
+    //Sidebar variables
+    var sideBarDim;
+    
+    var getDimensions = function(){
+        mapDim = {//Map dimensions
+            width:canvas.width - canvas.width/5,//The map takes up 4/5 of the screen.
+            height:canvas.height,//The map takes up the entire height of the screen.
+            x:0,//And starts in the left,
+            y:0//top portion of the screen.
+        }
+        
+        mapGrad = ctx.createRadialGradient(mapDim.x + mapDim.width*0.5, mapDim.y + mapDim.height/2, (mapDim.height < mapDim.width) ? mapDim.height : mapDim.width, mapDim.x + mapDim.width*0.5, mapDim.y + mapDim.height/2, 0);
+        mapGrad.addColorStop(0, 'gray');
+        //mapGrad.addColorStop(0.9, 'dimgray');
+        mapGrad.addColorStop(1, 'dimgray');
+        
+        sideBarDim = {
+            x:mapDim.x+mapDim.width, //So it starts where the mapDim leaves off
+            y:0,//Drawn from the top down
+            height:canvas.height,//Takes up the entire page.
+            width:canvas.width/5//Takes up the width the map left for 'em.
+        }
+        
+    }
+    
+    callOnResize.push(getDimensions);
+    getDimensions();
+    
+    
+    var drawBackground = function(){
+        ctx.fillStyle = mapGrad;
+        
+        ctx.fillRect(mapDim.x, mapDim.y, canvas.width, mapDim.height);
+    }
+    
+    var drawSideBar = function(){
+        ctx.strokeStyle = 'darkgray';
+        ctx.lineWidth = 4;
+        ctx.globalAlphaa = 0.3;
+        
+        ctx.beginPath();
+        ctx.moveTo(sideBarDim.x, sideBarDim.y);
+        ctx.lineTo(sideBarDim.x, sideBarDim.y + sideBarDim.height);
+        ctx.stroke();
+        
+        ctx.fillStyle = 'darkgray';
+        ctx.globalAlpha = 0.2;
+        
+        ctx.fillRect(sideBarDim.x, sideBarDim.y, sideBarDim.width, sideBarDim.height);
+        
+        ctx.globalAlpha = 1;
+    }
+    
+    var makeSideBarHTML = function(){
+        $('body').append('<div id = sideBar style = position:fixed;left:' + sideBarDim.x + 'px;top:' + sideBarDim.y + 'px;width:' + sideBarDim.width + 'px;height:' + sideBarDim.height + 'px;></div>');
+        
+        $('#sideBar').append(
+            '<h1>Clever Title</h1>' +
+            '<hr>'
+        );
+    }
+    
+    var killSideBarHTML = function(){
+        $('#sideBar').remove();
+    }
+    
+    var updateSideBarHTML = function(){
+        killSideBarHTML();
+        makeSideBarHTML();
+    }
+    
+    makeSideBarHTML();
+    
+    callOnResize.push(updateSideBarHTML);
+    
+    var animationLoop = function(){
+        if(isPaused)return;
+        
+        drawBackground();
+        drawSideBar();
+        
+        requestAnimationFrame(animationLoop);
+    }
+    
+    animationLoop();
 }
 
 //End of Universal Functions
