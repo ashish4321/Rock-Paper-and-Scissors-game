@@ -2,7 +2,7 @@ body{
 	margin:0px;
 	padding:0px;
 	overflow:hidden;
-	font-family: 'Ubuntu', sans-serif;
+	font-family: 'Modak', sans-serif;
 }
 
 div{
@@ -10,12 +10,14 @@ div{
 
 h1 {
 	text-align:center;
-    margin-bottom:3px;
+    margin-bottom:0px;
+    margin-top:3px;
+    font-weight:normal;
 }
 
 hr{
     
     border:1px solid black;
-    
+    margin-top:0px;
     width:80%;
 }

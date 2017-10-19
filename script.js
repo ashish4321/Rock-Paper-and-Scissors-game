@@ -231,7 +231,7 @@ function startScreen(){
                     //Cleanup:
                     //Code cleanup
 					startScreenOn = false
-                    //$(document).off(checkForButtons);
+                    $(document).off("click", checkForButtons);
                     callOnResize = [];
                     
                     //Aesthetic Cleanup
@@ -254,14 +254,15 @@ function startAdventure(){
     //Map variables
     var mapDim;
     var mapGrad;
+    var gridGrad;
     
     //Sidebar variables
     var sideBarDim;
     
     var getDimensions = function(){
         mapDim = {//Map dimensions
-            width:canvas.width - canvas.width/5,//The map takes up 4/5 of the screen.
-            height:canvas.height,//The map takes up the entire height of the screen.
+            width:canvas.width - canvas.width/5, //The map takes up 4/5 of the screen.
+            height:canvas.height, //The map takes up the entire height of the screen.
             x:0,//And starts in the left,
             y:0//top portion of the screen.
         }
@@ -270,12 +271,16 @@ function startAdventure(){
         mapGrad.addColorStop(0, 'gray');
         //mapGrad.addColorStop(0.9, 'dimgray');
         mapGrad.addColorStop(1, 'dimgray');
-        
+
+        gridGrad = ctx.createRadialGradient(mapDim.x + mapDim.width*0.5, mapDim.y + mapDim.height/2, (mapDim.height < mapDim.width) ? mapDim.height : mapDim.width, mapDim.x + mapDim.width*0.5, mapDim.y + mapDim.height/2, 0);
+        gridGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        gridGrad.addColorStop(1, 'rgba(255, 255, 255, 0.03');
+
         sideBarDim = {
             x:mapDim.x+mapDim.width, //So it starts where the mapDim leaves off
-            y:0,//Drawn from the top down
-            height:canvas.height,//Takes up the entire page.
-            width:canvas.width/5//Takes up the width the map left for 'em.
+            y:0, //Drawn from the top down
+            height:canvas.height, //Takes up the entire page.
+            width:canvas.width/5 //Takes up the width the map left for 'em.
         }
         
     }
@@ -288,6 +293,26 @@ function startAdventure(){
         ctx.fillStyle = mapGrad;
         
         ctx.fillRect(mapDim.x, mapDim.y, canvas.width, mapDim.height);
+
+        for(var y = 0; y < canvas.height; y = y + 32){
+    		ctx.strokeStyle = gridGrad;
+
+    		ctx.beginPath();
+    		ctx.moveTo(0, y);
+    		ctx.lineTo(canvas.width, y);
+    		ctx.stroke();
+    		ctx.closePath();
+        }
+
+        for(var x = 0; x < canvas.width; x = x + 32){
+    		ctx.strokeStyle = gridGrad;
+
+    		ctx.beginPath();
+    		ctx.moveTo(x, 0);
+    		ctx.lineTo(x, canvas.height);//Swap x and canvas.height and something really weird happens.
+    		ctx.stroke();
+    		ctx.closePath();
+        }
     }
     
     var drawSideBar = function(){
@@ -312,7 +337,7 @@ function startAdventure(){
         $('body').append('<div id = sideBar style = position:fixed;left:' + sideBarDim.x + 'px;top:' + sideBarDim.y + 'px;width:' + sideBarDim.width + 'px;height:' + sideBarDim.height + 'px;></div>');
         
         $('#sideBar').append(
-            '<h1>Clever Title</h1>' +
+            '<h1>Inventory</h1>' +
             '<hr>'
         );
     }
