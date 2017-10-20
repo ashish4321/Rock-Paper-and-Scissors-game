@@ -1,9 +1,9 @@
-    var canvas;//  We'll define these
+var canvas;//  We'll define these
 var ctx;//	   guys later.
 
 //Background variables
-var primaryColor   = '#005dff';
-var secondaryColor = '#81aaef';
+var primaryColor   = '#282828';
+var secondaryColor = '#505050';
 var backgroundGradient;//This guy is the gradient for the background.
 
 //These are called on the screen's resize.
@@ -24,8 +24,8 @@ function adjustScreen(){
 	canvas.height = $(window).height();//Get the screen's height to fill all available space.
 
 	backgroundGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);//define bounds for gradient
-	backgroundGradient.addColorStop(0, primaryColor);//Define first color stop
-	backgroundGradient.addColorStop(1, secondaryColor);//Define second color stop
+	backgroundGradient.addColorStop(0, primaryColor);//Define start of left column
+	backgroundGradient.addColorStop(1, secondaryColor);//Define beginning of right column
 
 	callOnResize.forEach(function(element){//Here we'll just loop through
 		element(); //everything in callOnResize
@@ -247,8 +247,10 @@ function startScreen(){
 
 }
 
+
+
 function startAdventure(){
-    //isOn boolean
+    //boolean, if it's off the loop goes off.
     var isPaused = false;
     
     //Map variables
@@ -256,110 +258,126 @@ function startAdventure(){
     var mapGrad;
     var gridGrad;
     
-    //Sidebar variables
-    var sideBarDim;
-    
-    var getDimensions = function(){
-        mapDim = {//Map dimensions
-            width:canvas.width - canvas.width/5, //The map takes up 4/5 of the screen.
-            height:canvas.height, //The map takes up the entire height of the screen.
-            x:0,//And starts in the left,
-            y:0//top portion of the screen.
-        }
-        
-        mapGrad = ctx.createRadialGradient(mapDim.x + mapDim.width*0.5, mapDim.y + mapDim.height/2, (mapDim.height < mapDim.width) ? mapDim.height : mapDim.width, mapDim.x + mapDim.width*0.5, mapDim.y + mapDim.height/2, 0);
-        mapGrad.addColorStop(0, 'gray');
-        //mapGrad.addColorStop(0.9, 'dimgray');
-        mapGrad.addColorStop(1, 'dimgray');
+	//Player variables
+    var player = {
+    	x:0,
+    	y:0,
 
-        gridGrad = ctx.createRadialGradient(mapDim.x + mapDim.width*0.5, mapDim.y + mapDim.height/2, (mapDim.height < mapDim.width) ? mapDim.height : mapDim.width, mapDim.x + mapDim.width*0.5, mapDim.y + mapDim.height/2, 0);
+    	intensity:0.4,
+    	intensityChangeRate:0.005,
+    	intensityMax:0.8,
+    	intensityMin:0.4,
+
+    	speed:{
+    		x:0,
+    		y:0
+    	},
+    	maxSpeed:5,
+    	speedIncrease:0.5,
+    	speedDecrease:0.25,
+
+    	keyMaps:{
+    		'w':function(){
+    			player.speed.y = (player.speed.y - player.speedIncrease < player.maxSpeed*-1) ? player.speed.y - player.speedIncrease : player.maxSpeed*-1;
+    		}
+    	}
+    }
+    
+    var getGradients = function(){
+    	mapGrad = ctx.createRadialGradient(ctx.x + canvas.width/2, ctx.y + canvas.height/2, canvas.height, ctx.x + canvas.width/2, ctx.y + canvas.height/2, 0);
+        mapGrad.addColorStop(0, primaryColor);
+        //mapGrad.addColorStop(0.9, 'dimgray');
+        mapGrad.addColorStop(1, secondaryColor);
+
+        gridGrad = ctx.createRadialGradient(ctx.x + canvas.width/2, ctx.y + canvas.height/2, canvas.height, ctx.x + canvas.width/2, ctx.y + canvas.height/2, 0);
         gridGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
         gridGrad.addColorStop(1, 'rgba(255, 255, 255, 0.03');
-
-        sideBarDim = {
-            x:mapDim.x+mapDim.width, //So it starts where the mapDim leaves off
-            y:0, //Drawn from the top down
-            height:canvas.height, //Takes up the entire page.
-            width:canvas.width/5 //Takes up the width the map left for 'em.
-        }
         
     }
-    
-    callOnResize.push(getDimensions);
-    getDimensions();
-    
     
     var drawBackground = function(){
+
+    	getGradients();
+
         ctx.fillStyle = mapGrad;
         
-        ctx.fillRect(mapDim.x, mapDim.y, canvas.width, mapDim.height);
+        ctx.fillRect(ctx.x, ctx.y, canvas.width, canvas.height);
 
-        for(var y = 0; y < canvas.height; y = y + 32){
-    		ctx.strokeStyle = gridGrad;
+        ctx.strokeStyle = gridGrad;
 
+        for(var y = ctx.y; y < ctx.y + canvas.height; y = y + 32){
     		ctx.beginPath();
-    		ctx.moveTo(0, y);
-    		ctx.lineTo(canvas.width, y);
+    		ctx.moveTo(ctx.x, y);
+    		ctx.lineTo(ctx.x + canvas.width, y);
     		ctx.stroke();
     		ctx.closePath();
         }
 
-        for(var x = 0; x < canvas.width; x = x + 32){
-    		ctx.strokeStyle = gridGrad;
-
+        for(var x = ctx.x; x < ctx.x + canvas.width; x = x + 32){
     		ctx.beginPath();
-    		ctx.moveTo(x, 0);
-    		ctx.lineTo(x, canvas.height);//Swap x and canvas.height and something really weird happens.
+    		ctx.moveTo(x, ctx.y);
+    		ctx.lineTo(x, ctx.y + canvas.height);//Swap x and canvas.height and something really weird happens.
     		ctx.stroke();
     		ctx.closePath();
         }
     }
-    
-    var drawSideBar = function(){
-        ctx.strokeStyle = 'darkgray';
-        ctx.lineWidth = 4;
-        ctx.globalAlphaa = 0.3;
-        
-        ctx.beginPath();
-        ctx.moveTo(sideBarDim.x, sideBarDim.y);
-        ctx.lineTo(sideBarDim.x, sideBarDim.y + sideBarDim.height);
-        ctx.stroke();
-        
-        ctx.fillStyle = 'darkgray';
-        ctx.globalAlpha = 0.2;
-        
-        ctx.fillRect(sideBarDim.x, sideBarDim.y, sideBarDim.width, sideBarDim.height);
-        
-        ctx.globalAlpha = 1;
+
+
+    var drawPlayer = function(){
+    	var playerGradient = ctx.createRadialGradient(player.x, player.y, 16, player.x, player.y, 0);
+    	playerGradient.addColorStop(0, 'rgba(255, 255, 0, 0)');
+    	playerGradient.addColorStop(1, 'rgba(255, 255, 0, ' + player.intensity + ')');
+
+    	player.intensity = player.intensity + player.intensityChangeRate;
+    	if(player.intensity > player.intensityMax)player.intensityChangeRate = player.intensityChangeRate * -1;
+    	else if(player.intensity < player.intensityMin)player.intensityChangeRate = player.intensityChangeRate * -1;
+
+
+    	ctx.fillStyle = playerGradient;
+
+    	ctx.beginPath();
+    	ctx.arc(player.x, player.y, 16, 0, 2*Math.PI);
+
+    	ctx.fill();
+
     }
-    
-    var makeSideBarHTML = function(){
-        $('body').append('<div id = sideBar style = position:fixed;left:' + sideBarDim.x + 'px;top:' + sideBarDim.y + 'px;width:' + sideBarDim.width + 'px;height:' + sideBarDim.height + 'px;></div>');
-        
-        $('#sideBar').append(
-            '<h1>Inventory</h1>' +
-            '<hr>'
-        );
-    }
-    
-    var killSideBarHTML = function(){
-        $('#sideBar').remove();
-    }
-    
-    var updateSideBarHTML = function(){
-        killSideBarHTML();
-        makeSideBarHTML();
-    }
-    
-    makeSideBarHTML();
-    
-    callOnResize.push(updateSideBarHTML);
-    
+
+    function centerCameraOnPlayer(){
+	    ctx.translate(player.x + canvas.width/2, player.y + canvas.height/2);
+	    ctx.x = 0 - (player.x + canvas.width/2);
+	    ctx.y = 0 - (player.y + canvas.height/2);
+	    
+	}
+
+	centerCameraOnPlayer();
+	callOnResize.push(centerCameraOnPlayer);
+
+	var calculatePlayer = function(){
+		player.x = player.x + player.speed.x;
+		player.y = player.y + player.speed.y;
+
+		if(player.speed.x > 0)player.speed.x = (player.speed.x - player.speedDecrease > 0) ? player.speed.x - player.speedDecrease : 0;
+		else if(player.speed.x < 0)player.speed.x = (player.speed.x + player.speedDecrease < 0) ? player.speed.x + player.speedDecrease : 0;
+
+		if(player.speed.y > 0)player.speed.y = (player.speed.y - player.speedDecrease > 0) ? player.speed.y - player.speedDecrease : 0;
+		else if(player.speed.y < 0)player.speed.y = (player.speed.y + player.speedDecrease < 0) ? player.speed.y + player.speedDecrease : 0;
+	}
+
+
+
+	$(document).on('keydown', function(event){
+		for(var element in player.keyMaps){
+			if(element == event.key)player.keyMaps[element]();
+		}
+	});
+
+
     var animationLoop = function(){
         if(isPaused)return;
         
         drawBackground();
-        drawSideBar();
+        calculatePlayer();
+        drawPlayer();
         
         requestAnimationFrame(animationLoop);
     }
@@ -375,6 +393,8 @@ function startAdventure(){
 $(document).ready(function(){
 	canvas = document.getElementById('gameCanvas');//Now that these guys have been loaded in,
 	ctx = canvas.getContext('2d');//				 we'll initialize them.
+	ctx.x = 0;
+	ctx.y = 0;
 
 	adjustScreen();
 
