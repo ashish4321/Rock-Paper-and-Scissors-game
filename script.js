@@ -9,6 +9,9 @@ var backgroundGradient;//This guy is the gradient for the background.
 //These are called on the screen's resize.
 var callOnResize = [];
 
+//User input variables
+var keyMap = [];
+
 
 //Universal Functions. 
 //Generally speaking, the more simple the function, the higher up in the script it is.
@@ -272,14 +275,17 @@ function startAdventure(){
     		x:0,
     		y:0
     	},
-    	maxSpeed:5,
+    	maxSpeed:7,
     	speedIncrease:0.5,
-    	speedDecrease:0.25,
+    	speedDecrease:0.05,
 
     	keyMaps:{
     		'w':function(){
-    			player.speed.y = (player.speed.y - player.speedIncrease < player.maxSpeed*-1) ? player.speed.y - player.speedIncrease : player.maxSpeed*-1;
-    		}
+    			player.speed.y = (player.speed.y - player.speedIncrease > player.maxSpeed*-1) ? player.speed.y - player.speedIncrease : player.maxSpeed*-1;
+    		},
+            'd':function(){
+                player.speed.x = (player.speed.x - player.speedIncrease > player.maxSpeed*-1) ? player.speed.x - player.speedIncrease : player.maxSpeed*-1;
+            }
     	}
     }
     
@@ -291,7 +297,7 @@ function startAdventure(){
 
         gridGrad = ctx.createRadialGradient(ctx.x + canvas.width/2, ctx.y + canvas.height/2, canvas.height, ctx.x + canvas.width/2, ctx.y + canvas.height/2, 0);
         gridGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        gridGrad.addColorStop(1, 'rgba(255, 255, 255, 0.03');
+        gridGrad.addColorStop(1, 'rgba(255, 255, 255, 0.3');
         
     }
     
@@ -305,7 +311,8 @@ function startAdventure(){
 
         ctx.strokeStyle = gridGrad;
 
-        for(var y = ctx.y; y < ctx.y + canvas.height; y = y + 32){
+        //Vertical lines
+        for(var y = ctx.y - (player.y % 32); y < ctx.y + canvas.height; y = y + 32){
     		ctx.beginPath();
     		ctx.moveTo(ctx.x, y);
     		ctx.lineTo(ctx.x + canvas.width, y);
@@ -313,7 +320,8 @@ function startAdventure(){
     		ctx.closePath();
         }
 
-        for(var x = ctx.x; x < ctx.x + canvas.width; x = x + 32){
+        //Horizontal lines
+        for(var x = ctx.x + (player.x % 32); x < ctx.x + canvas.width; x = x + 32){
     		ctx.beginPath();
     		ctx.moveTo(x, ctx.y);
     		ctx.lineTo(x, ctx.y + canvas.height);//Swap x and canvas.height and something really weird happens.
@@ -355,17 +363,50 @@ function startAdventure(){
 	var calculatePlayer = function(){
 		player.x = player.x + player.speed.x;
 		player.y = player.y + player.speed.y;
+        
+        ctx.translate(player.speed.x*-1, player.speed.y*-1);
+        ctx.x = ctx.x - player.speed.x*-1;
+        ctx.y = ctx.y - player.speed.y*-1;
 
-		if(player.speed.x > 0)player.speed.x = (player.speed.x - player.speedDecrease > 0) ? player.speed.x - player.speedDecrease : 0;
-		else if(player.speed.x < 0)player.speed.x = (player.speed.x + player.speedDecrease < 0) ? player.speed.x + player.speedDecrease : 0;
+		if(player.speed.x > 0)player.speed.x = ((player.speed.x - player.speedDecrease) > 0) ? player.speed.x - player.speedDecrease : 0;
+		else if(player.speed.x < 0)player.speed.x = ((player.speed.x + player.speedDecrease) < 0) ? player.speed.x + player.speedDecrease : 0;
 
-		if(player.speed.y > 0)player.speed.y = (player.speed.y - player.speedDecrease > 0) ? player.speed.y - player.speedDecrease : 0;
-		else if(player.speed.y < 0)player.speed.y = (player.speed.y + player.speedDecrease < 0) ? player.speed.y + player.speedDecrease : 0;
+		if(player.speed.y > 0)player.speed.y = ((player.speed.y - player.speedDecrease) > 0) ? player.speed.y - player.speedDecrease : 0;
+		else if(player.speed.y < 0)player.speed.y = ((player.speed.y + player.speedDecrease) < 0) ? player.speed.y + player.speedDecrease : 0;
 	}
 
 
 
 	$(document).on('keydown', function(event){
+        
+        onkeydown = onkeyup = function(e){
+                  e = e || event; //to deal with IE//Although nothing else is IE proof... :D
+                  
+                  if(typeof (e.key == 'r' && keyMap['ctrl']) == 'undefined' || typeof (e.key == 'I' && keyMap['ctrl'] && keyMap['shift']) == 'undefined' || e.key == 'F11');
+                  else {
+                    e.preventDefault();
+                  }
+                  
+                  if(e.key == '1' || e.key == '2'){
+                    var handCount = 0;
+                    for(var encapsulationDeviceIndex in playerCharacter.inventory){
+                      var encapsulationDevice = playerCharacter.inventory[encapsulationDeviceIndex];
+                      if(encapsulationDevice.type == 'hand'){
+                        handCount = handCount + 1;
+                        if(handCount == e.key){
+                          $('#' + encapsulationDeviceIndex).click();
+                          break;
+                        }
+                      }
+                    }
+                  }
+                  
+                  keyMap[e.key] = e.type == 'keydown';
+                }
+                
+                $(document).on('keydown', onkeydown);
+                $(document).on('keyup', onkeyup);
+        
 		for(var element in player.keyMaps){
 			if(element == event.key)player.keyMaps[element]();
 		}
@@ -375,8 +416,8 @@ function startAdventure(){
     var animationLoop = function(){
         if(isPaused)return;
         
-        drawBackground();
         calculatePlayer();
+        drawBackground();
         drawPlayer();
         
         requestAnimationFrame(animationLoop);
