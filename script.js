@@ -10,8 +10,8 @@ var backgroundGradient;//This guy is the gradient for the background.
 var callOnResize = [];
 
 //User input variables
-var keyMap = [];
-
+var pressedKeys = [];
+var currentMouseEvent;
 
 //Universal Functions. 
 //Generally speaking, the more simple the function, the higher up in the script it is.
@@ -265,11 +265,16 @@ function startAdventure(){
     var player = {
     	x:0,
     	y:0,
+    	trailCoords:(function(){
+    		var trailCoords = [];
+    		for(var i = 0; i < 15; i++)trailCoords.push([0, 0]);
+    		return trailCoords;
+    	})(),
 
-    	intensity:0.4,
+    	intensity:0.8,
     	intensityChangeRate:0.005,
-    	intensityMax:0.8,
-    	intensityMin:0.4,
+    	intensityMax:1,
+    	intensityMin:0.8,
 
     	speed:{
     		x:0,
@@ -283,10 +288,26 @@ function startAdventure(){
     		'w':function(){
     			player.speed.y = (player.speed.y - player.speedIncrease > player.maxSpeed*-1) ? player.speed.y - player.speedIncrease : player.maxSpeed*-1;
     		},
+    		's':function(){
+    			player.speed.y = (player.speed.y + player.speedIncrease < player.maxSpeed) ? player.speed.y + player.speedIncrease : player.maxSpeed;
+    		},
             'd':function(){
-                player.speed.x = (player.speed.x - player.speedIncrease > player.maxSpeed*-1) ? player.speed.x - player.speedIncrease : player.maxSpeed*-1;
-            }
-    	}
+            	player.speed.x = (player.speed.x + player.speedIncrease < player.maxSpeed) ? player.speed.x + player.speedIncrease : player.maxSpeed;	 
+            },
+			'a':function(){
+    			player.speed.x = (player.speed.x - player.speedIncrease > player.maxSpeed*-1) ? player.speed.x - player.speedIncrease : player.maxSpeed*-1;
+    		},
+    		'left-button':function(){
+    			if(player.swingRechargeCounter - Date.now() < 0){
+    				player.swingRechargeCounter = Date.now() + player.swingRechargeTime;
+    				player.swings.push(new swing(currentMouseEvent.clientX - canvas.width/2, currentMouseEvent.clientY - canvas.height/2));
+    			}
+    		}
+    	},
+
+    	swings:[],
+    	swingRechargeCounter:Date.now() + 1,
+    	swingRechargeTime:20
     }
     
     var getGradients = function(){
@@ -297,7 +318,7 @@ function startAdventure(){
 
         gridGrad = ctx.createRadialGradient(ctx.x + canvas.width/2, ctx.y + canvas.height/2, canvas.height, ctx.x + canvas.width/2, ctx.y + canvas.height/2, 0);
         gridGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        gridGrad.addColorStop(1, 'rgba(255, 255, 255, 0.3');
+        gridGrad.addColorStop(1, 'rgba(255, 255, 255, 0.1');
         
     }
     
@@ -321,7 +342,7 @@ function startAdventure(){
         }
 
         //Horizontal lines
-        for(var x = ctx.x + (player.x % 32); x < ctx.x + canvas.width; x = x + 32){
+        for(var x = ctx.x - (player.x % 32); x < ctx.x + canvas.width; x = x + 32){
     		ctx.beginPath();
     		ctx.moveTo(x, ctx.y);
     		ctx.lineTo(x, ctx.y + canvas.height);//Swap x and canvas.height and something really weird happens.
@@ -332,9 +353,36 @@ function startAdventure(){
 
 
     var drawPlayer = function(){
+    	
+    	player.swings.forEach(function(element){
+    		element.draw();
+    	});
+
+    	trailGradient = ctx.createRadialGradient(player.x, player.y, 125, player.x, player.y, 0);
+    	trailGradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+    	trailGradient.addColorStop(0.85, 'rgba(255, 0, 0, ' + player.intensity/4 + ')');
+    	trailGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    	
+    	ctx.strokeStyle = trailGradient;
+
+    	player.trailCoords.forEach(function(element, index){
+    		ctx.lineWidth = player.trailCoords.length - index;
+    		ctx.beginPath();
+
+    		var lastCoordsX = (player.trailCoords[index-1]) ? player.trailCoords[index-1][0] : player.x;
+    		var lastCoordsY = (player.trailCoords[index-1]) ? player.trailCoords[index-1][1] : player.y;
+
+    		ctx.moveTo(lastCoordsX, lastCoordsY);
+    		ctx.lineTo(element[0], element[1]);
+
+    		ctx.stroke();
+    	});
+
+    	ctx.lineWidth = 1;
+
     	var playerGradient = ctx.createRadialGradient(player.x, player.y, 16, player.x, player.y, 0);
-    	playerGradient.addColorStop(0, 'rgba(255, 255, 0, 0)');
-    	playerGradient.addColorStop(1, 'rgba(255, 255, 0, ' + player.intensity + ')');
+    	playerGradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+    	playerGradient.addColorStop(1, 'rgba(255, 0, 0, ' + player.intensity + ')');
 
     	player.intensity = player.intensity + player.intensityChangeRate;
     	if(player.intensity > player.intensityMax)player.intensityChangeRate = player.intensityChangeRate * -1;
@@ -350,10 +398,69 @@ function startAdventure(){
 
     }
 
+	function swing(targetX, targetY){
+		//Variable declaration
+		//Transformation stuff
+		this.x = 0;
+		this.y = 0;
+		this.rotation = Math.atan2(targetY, targetX);
+		//Radius
+		this.radius = 0;//This is increased until it reaches maxRadius,
+		this.maxRadius = 60;//At which point the swing fades away.
+		this.radiusIncreaseRate = 7;//Increases radius, decreases until it reaches minimumRadIncRate,
+		this.minimumRadIncRate = 5;//At which point it stops decreasing.
+		//Aesthetics
+		this.intensity = 0.3;//How transparent the edge of the swing is
+
+		movePlayer(-5 * Math.cos(this.rotation), -5 * Math.sin(this.rotation));
+
+		this.calculate = function(){
+			if(this.radius >= this.maxRadius){//This'll fade out, and eventually remove the swing once it's done expanding
+				this.intensity = this.intensity - 0.05;
+				this.radius = this.radius + 0.1;
+				if(this.intensity <= 0)player.swings.splice(player.swings.indexOf(this), 1);
+				return;
+			}
+
+			this.radius = this.radius + this.radiusIncreaseRate;
+			this.radiusIncreaseRate = (this.radiusIncreaseRate - 0.5 < this.minimumRadIncRate) ? this.minimumRadIncRate : this.radiusIncreaseRate - 0.5;
+		};
+
+    	this.draw = function(){
+    		this.calculate();
+
+    		var gradient = ctx.createRadialGradient(this.x, this.y, this.radius, this.x, this.y, 0);
+    		//Add pulsing bit here
+    		gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    		gradient.addColorStop(0.1, 'rgba(255, 0, 0, ' + this.intensity + ')');
+    		gradient.addColorStop(0.2, 'rgba(255, 0, 0, ' + this.intensity/10 + ')');
+    		gradient.addColorStop(0.5, 'rgba(255, 0, 0, 0)');
+    		gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+
+    		ctx.fillStyle = gradient;
+
+    		ctx.save();
+    		ctx.setTransform(1, 0, 0, 1, 0, 0);//Reset canvas
+    		ctx.translate(canvas.width/2, canvas.height/2);
+    		ctx.rotate(this.rotation);
+
+    		ctx.beginPath();
+    		ctx.moveTo(this.x, this.y + 10);
+    		ctx.lineTo(this.x, this.y - 10);
+    		ctx.arc(this.x, this.y, this.radius, Math.PI/10*-1, Math.PI/10);
+
+    		ctx.fill();
+
+    		ctx.restore();
+    	};
+
+    }
+
     function centerCameraOnPlayer(){
-	    ctx.translate(player.x + canvas.width/2, player.y + canvas.height/2);
-	    ctx.x = 0 - (player.x + canvas.width/2);
-	    ctx.y = 0 - (player.y + canvas.height/2);
+    	ctx.setTransform(1, 0, 0, 1, 0, 0);//Reset canvas
+	    ctx.translate(player.x*-1 + canvas.width/2, player.y*-1 + canvas.height/2);//Goes to player coords, then half way up screen to center.
+	    ctx.x = 0 - (player.x*-1 + canvas.width/2);//Resets ctx.x and records the previous translation
+	    ctx.y = 0 - (player.y*-1 + canvas.height/2);//Same as above but for ctx.y
 	    
 	}
 
@@ -361,12 +468,15 @@ function startAdventure(){
 	callOnResize.push(centerCameraOnPlayer);
 
 	var calculatePlayer = function(){
-		player.x = player.x + player.speed.x;
-		player.y = player.y + player.speed.y;
-        
-        ctx.translate(player.speed.x*-1, player.speed.y*-1);
-        ctx.x = ctx.x - player.speed.x*-1;
-        ctx.y = ctx.y - player.speed.y*-1;
+		player.trailCoords.splice(player.trailCoords.length - 1, 1);
+		player.trailCoords.unshift([player.x, player.y]);
+
+		player.lastX = player.x;
+		player.lastY = player.y;
+
+		movePlayer(player.speed.x, player.speed.y);
+
+        for(var keyMap in player.keyMaps)if(pressedKeys[keyMap])player.keyMaps[keyMap]();
 
 		if(player.speed.x > 0)player.speed.x = ((player.speed.x - player.speedDecrease) > 0) ? player.speed.x - player.speedDecrease : 0;
 		else if(player.speed.x < 0)player.speed.x = ((player.speed.x + player.speedDecrease) < 0) ? player.speed.x + player.speedDecrease : 0;
@@ -375,52 +485,43 @@ function startAdventure(){
 		else if(player.speed.y < 0)player.speed.y = ((player.speed.y + player.speedDecrease) < 0) ? player.speed.y + player.speedDecrease : 0;
 	}
 
+	function movePlayer(x, y){//And the camera too.
+		player.x = player.x + x; 
+		player.y = player.y + y;
+        
+        ctx.translate(x*-1, y*-1);
+        ctx.x = ctx.x - x*-1;
+        ctx.y = ctx.y - y*-1;
+
+	}
 
 
-	$(document).on('keydown', function(event){
-        
-        onkeydown = onkeyup = function(e){
-                  e = e || event; //to deal with IE//Although nothing else is IE proof... :D
-                  
-                  if(typeof (e.key == 'r' && keyMap['ctrl']) == 'undefined' || typeof (e.key == 'I' && keyMap['ctrl'] && keyMap['shift']) == 'undefined' || e.key == 'F11');
-                  else {
-                    e.preventDefault();
-                  }
-                  
-                  if(e.key == '1' || e.key == '2'){
-                    var handCount = 0;
-                    for(var encapsulationDeviceIndex in playerCharacter.inventory){
-                      var encapsulationDevice = playerCharacter.inventory[encapsulationDeviceIndex];
-                      if(encapsulationDevice.type == 'hand'){
-                        handCount = handCount + 1;
-                        if(handCount == e.key){
-                          $('#' + encapsulationDeviceIndex).click();
-                          break;
-                        }
-                      }
-                    }
-                  }
-                  
-                  keyMap[e.key] = e.type == 'keydown';
-                }
-                
-                $(document).on('keydown', onkeydown);
-                $(document).on('keyup', onkeyup);
-        
-		for(var element in player.keyMaps){
-			if(element == event.key)player.keyMaps[element]();
-		}
+	onkeydown = onkeyup = function(e){
+		e = e || event; //to deal with IE //Although nothing else is IE proof... :D
+
+		pressedKeys[e.key] = e.type == 'keydown';
+	}
+
+	$(document).on('keydown keyup', onkeydown);
+	$(document).on('mousedown mouseup', function(event){
+		var buttonNameArray = ['left-button', 'middle-button', 'right-button']
+		pressedKeys[buttonNameArray[event.button]] = event.type == 'mousedown';
+		currentMouseEvent = event;
+		if(event.type == 'mousedown')$(document).on('mousemove', function(event){
+			currentMouseEvent = event;
+		});
+		else $(document).off('mousemove');
 	});
 
 
-    var animationLoop = function(){
-        if(isPaused)return;
+    var animationLoop = function(){//This function is the glue that holds all of the other guys together
+        if(isPaused)return;//Stop if the game is paused.
         
-        calculatePlayer();
-        drawBackground();
-        drawPlayer();
+        calculatePlayer();//This does the math for the player's actions
+        drawBackground();//This draws the background
+        drawPlayer();//This draws the player
         
-        requestAnimationFrame(animationLoop);
+        requestAnimationFrame(animationLoop);//And then it calls itself again.
     }
     
     animationLoop();
