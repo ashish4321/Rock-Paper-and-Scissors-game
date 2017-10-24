@@ -1,0 +1,22 @@
+{
+  "name": "rockpaperscissors",
+  "version": "0.0.5",
+  "private": true,
+  "scripts": {
+    "start": "node ./app.js",
+    "devstart": "nodemon ./bin.www"
+  },
+  "dependencies": {
+    "body-parser": "~1.18.2",
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.6.9",
+    "express": "~4.15.5",
+    "jade": "~1.11.0",
+    "morgan": "~1.9.0",
+    "serve-favicon": "~2.4.5",
+    "socket.io": "^2.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^1.12.1"
+  }
+}
