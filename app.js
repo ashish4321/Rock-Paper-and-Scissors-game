@@ -10,18 +10,58 @@ app.get('/', function(req, res,next){
     res.sendFile(__dirname + '/public/game.html');
 });
 
-io.on('connection', function(client) {  
-	console.log('Client connected...');//Start message
+var players = [];
 
-	client.on('join', function(data) {//When the client joins, they send us a message
-	    client.emit('broad', 'You have joined the game');//This puts a message in the console of the person who just joined.
-        client.broadcast.emit('broad', "Someone has joined the game.");//This will send the message to everyone else, too.
+io.on('connection', function(client) {  
+
+
+	client.on('usernameCheck', function(username){
+		var usernames = Object.keys(players);
+
+		if(!(usernames.indexOf(username)+1)){
+			players[username] = {};
+			client.emit('usernameResponse', true);
+			this.username = username;
+		}
+		else client.emit('usernameResponse', false);
 	});
 
+
+	client.on('disconnect', function(){
+		client.broadcast.emit('chatMessage', this.username, ' has left the game');
+		delete players[this.username];
+	});
+
+
+	client.on('join', function() {//When the client joins, they send us a message
+		//We'll give this new player info about everyone who's already in the game.
+		for(var player in players){
+			if(player == this.username)continue;
+			client.emit('newPlayer', player);
+		}
+		//We'll tell everyone that a new player has joined
+	    client.emit('chatMessage', 'Server', 'You have joined the game');
+        client.broadcast.emit('chatMessage', this.username, " has joined the game.");
+        //Then tell all clients to make a new slot for him.
+        client.broadcast.emit('newPlayer', this.username);
+	});
+
+
+	client.on('movementUpdate', function(data){
+		this.movementStats = data;
+		client.broadcast.emit('movementUpdate', this.username, this.movementStats);
+	});
+
+	client.on('swingUpdate', function(x, y){
+		client.broadcast.emit('swingUpdate', this.username, x, y);
+	});
+
+
 	client.on('messages', function(data) {//If we get a message, it comes with some data
-        client.emit('broad', data);//Send message back to the guy who sent it
-        client.broadcast.emit('broad',data);//Send message back to everyone else
+        client.emit('chatMessage', this.username, data);//Send message back to the guy who sent it
+        client.broadcast.emit('chatMessage', this.username, data);//Send message back to everyone else
     });
+
 
 });
 
