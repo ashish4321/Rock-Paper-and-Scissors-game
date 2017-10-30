@@ -1,5 +1,18 @@
-h1
-{
-	color:red;
-	text-align:center;
-	}
+h1, h2 {
+	margin: 32px 0;
+}
+.choices {
+	margin: 16px 0;
+}
+.user, .computer {
+	display: inline-block;
+}
+.vs {
+	margin: auto 32px;
+}
+#userChoice, #computerChoice {
+	font-size: 40px;
+}
+#result {
+	font-size: 32px
+}

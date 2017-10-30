@@ -1,14 +1,48 @@
 <!DOCTYPE html>
 <html>
-<head>
-<title>
-The Rock,Paper and Scissor Game
-</title>
-<link href="game.css" rel="stylesheet" type="text/css">
-</head>
-<body>
-<h1>Rock, Paper, Scissors</h1>
-<div class="game">
-<script src="game.js"></script>
-</body>
+  <head>
+    <title>
+      The Rock,Paper and Scissor Game
+    </title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link href="game.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="text-center text-danger">Rock, Paper, Scissors Game</h1>
+      <div class="row">
+        <div class="col-12 text-center">
+          <h2>Choose your option below:</h2>
+        </div>
+        <div class="col-12 text-center">
+          <div class="choices">
+            <a href="#" data-value="rock" class="choice btn btn-primary"><i class="fa fa-hand-rock-o"></i> Rock</a>
+            <a href="#" data-value="paper" class="choice btn btn-success"><i class="fa fa-hand-paper-o"></i> Paper</a>
+            <a href="#" data-value="scissors" class="choice btn btn-warning"><i class="fa fa-hand-scissors-o"></i> Scissors</a>
+          </div>
+        </div>
+        <div class="col-12 text-center">
+          <div class="text-center">
+            <div class="card">
+              <div class="card-body">
+                <div class="user">
+                  Player
+                  <div id="userChoice"></div>
+                </div>
+                <span class="vs">VS</span>
+                <div class="computer">
+                  Computer
+                  <div id="computerChoice"></div>
+                </div>
+              </div> 
+            </div>
+            <div id="result" class="text-center"></div>
+          </div>
+        </div>            
+      </div>
+    </div>
+  </body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="game.js"></script>
 </html>
