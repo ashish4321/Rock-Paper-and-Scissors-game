@@ -46,4 +46,4 @@ $('.choice').click(function () {
         }
     }
   }
-}) 
+})
