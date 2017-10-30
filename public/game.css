@@ -98,7 +98,12 @@ div.promptBox li{
 
     background-color:rgba(255, 255, 255, 0.02);
 
-    /*overflow:hidden;*/
+    /*these prevent drag selection of the text in the chat which would distract from the game's content*/
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 #sendBox{
@@ -121,12 +126,12 @@ div.promptBox li{
 
     padding-top:3px;
     height:22px;
-    width:220px;
+    width:235px;
     padding-left:10px;
 
     display:inline-block;
     
-    border-radius:5px 5px 0px 0px;
+    border-radius:15px 0px 0px 0px;
     background-color:rgba(255, 255, 255, 0.05);
 }
 
@@ -137,19 +142,18 @@ div.promptBox li{
 
 #sendButton{
     float:right;
-    margin-right:12px;
 
     text-align:center;
     font-size:18px;
     font-weight:bold;
 
-    background-color:rgba(255, 255, 255, 0.05);
+    background-color:rgba(255, 255, 255, 0.09);
 
     padding-top:2px;
-    width:60px;
+    width:65px;
     height:23px;
     
-    border-radius:5px;
+    border-radius:0px 15px 0px 0px;
 }
 
 h1 {

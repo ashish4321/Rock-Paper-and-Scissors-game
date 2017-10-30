@@ -29,6 +29,7 @@ io.on('connection', function(client) {
 
 	client.on('disconnect', function(){
 		client.broadcast.emit('chatMessage', this.username, ' has left the game');
+		client.broadcast.emit('deletePlayer', this.username);
 		delete players[this.username];
 	});
 
@@ -41,19 +42,24 @@ io.on('connection', function(client) {
 		}
 		//We'll tell everyone that a new player has joined
 	    client.emit('chatMessage', 'Server', 'You have joined the game');
-        client.broadcast.emit('chatMessage', this.username, " has joined the game.");
+        client.broadcast.emit('chatMessage', 'Server', this.username + " has joined the game.");
         //Then tell all clients to make a new slot for him.
         client.broadcast.emit('newPlayer', this.username);
 	});
 
 
 	client.on('movementUpdate', function(data){
-		this.movementStats = data;
-		client.broadcast.emit('movementUpdate', this.username, this.movementStats);
+		//this.movementStats = data;
+		client.broadcast.emit('movementUpdate', this.username, data);
 	});
 
-	client.on('swingUpdate', function(x, y){
-		client.broadcast.emit('swingUpdate', this.username, x, y);
+	client.on('swingUpdate', function(x, y, rotation){
+		client.broadcast.emit('swingUpdate', this.username, x, y, rotation);
+	});
+
+	client.on('healthUpdate', function(health, dealtBy){
+		if(health < 0)client.broadcast.emit('chatMessage', 'Server', this.username + " was bested by " + dealtBy + "!");
+		client.broadcast.emit('healthUpdate', this.username, health);
 	});
 
 
