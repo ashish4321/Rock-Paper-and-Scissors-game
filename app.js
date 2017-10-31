@@ -58,7 +58,9 @@ io.on('connection', function(client) {
 	});
 
 	client.on('healthUpdate', function(health, dealtBy){
-		if(health < 0)client.broadcast.emit('chatMessage', 'Server', this.username + " was bested by " + dealtBy + "!");
+		if(health < 0){
+			client.broadcast.emit('chatMessage', 'Server', this.username + " was bested by " + dealtBy + "!");
+		}
 		client.broadcast.emit('healthUpdate', this.username, health);
 	});
 

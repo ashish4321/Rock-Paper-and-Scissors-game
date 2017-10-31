@@ -156,6 +156,23 @@ div.promptBox li{
     border-radius:0px 15px 0px 0px;
 }
 
+.hotBarBox{
+    width:47px;
+    height:42px;
+
+    text-align:center;
+
+    background-color:rgba(255, 255, 255, 0.03);
+
+    border:5px solid rgba(255, 255, 255, 0.0315);
+    border-bottom:0px;
+    border-radius:15px 15px 0px 0px;
+
+    padding-top:3px;
+    position:absolute;
+    bottom:0px;
+}
+
 h1 {
 	text-align:center;
     margin-bottom:0px;
@@ -163,6 +180,12 @@ h1 {
     font-weight:normal;
 }
 
+h2{
+    font-family:'Roboto', serif;
+    color:grey;
+    margin-top:0px;
+    font-weight:lighter;
+    font-size:33px;
 hr{
     
     border:1px solid black;

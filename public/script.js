@@ -16,6 +16,10 @@ var currentMouseEvent;
 //network variables
 var socket;
 
+//images variables
+var images = [];
+const sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
+
 //Universal Functions. 
 //Generally speaking, the more simple the function, the higher up in the script it is.
 
@@ -74,8 +78,6 @@ function startScreen(){
 	const titleText = 'Rock Paper Scissors';
 
 	//Waterfall of items variables
-	var images = [];
-	const sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
 	var items = [];
 
 	//Buttons variables. Right now they just contain a name, and some code to run when they're clicked, but later they will get bounding rects that allow them to be clicked.
@@ -83,7 +85,7 @@ function startScreen(){
 		{
 			name:'Adventure',
 			onClick:function(cleanUp, cleanUpButtons){
-				socket = io.connect('http://192.168.1.2:4200');
+				socket = io.connect('http://' + window.location.hostname + ':4200');
 
 				cleanUpButtons();//We don't want the other buttons to be able to be pressed.
 				var username = getCookie("username");
@@ -477,6 +479,10 @@ function startAdventure(username){
     		this.health = this.maxHealth;
     	}
 
+    	this.attack = function(damage, dealtBy, weapon){
+
+    	}
+
     	this.move = function(x, y){
 			this.x = this.x + x;//Pretty simple,
 			this.y = this.y + y;//only made into a function so that it can be overwritten for localPlayer
@@ -634,6 +640,8 @@ function startAdventure(username){
     //localPlayer variables
     var localPlayer = new player();//Local player is the one this client is controlling
     localPlayer.username = username;//We'll record his username.
+    localPlayer.currentWeapon = 'rock';//The local player is currently using a rock. How original.
+    localPlayer.outlineCurrentWeapon = true;
 	localPlayer.keyMaps = {//So we'll give him some controls.
 		'w':function(){//These could be outsourced to a more efficent function.
 			localPlayer.speed.y = (localPlayer.speed.y - localPlayer.speedIncrease > localPlayer.maxSpeed*-1) ? localPlayer.speed.y - localPlayer.speedIncrease : localPlayer.maxSpeed*-1;
@@ -674,7 +682,31 @@ function startAdventure(username){
 				localPlayer.getSwing(0, 0, localPlayer.rotation);//And then record it for yourself.
 				//The params tell the swing function where to point it's swing at.
 			}
-		}
+		}/*,
+		'1':function(){
+			for(var element in rockPaperScissors){
+				if(rockPaperScissors[element].index == 0){
+					$('#' + element).click();
+					return;
+				}
+			}
+		},
+		'2':function(){
+			for(var element in rockPaperScissors){
+				if(rockPaperScissors[element].index == 1){
+					$('#' + element).click();
+					return;
+				}
+			}
+		},
+		'3':function(){
+			for(var element in rockPaperScissors){
+				if(rockPaperScissors[element].index == 2){
+					$('#' + element).click();
+					return;
+				}
+			}
+		}*/
 	};
 
 	localPlayer.swingRechargeCounter = Date.now() + 1;//This keeps track of when you can swing and when you can't.
@@ -696,28 +728,16 @@ function startAdventure(username){
 		//Obviously we don't want them to keep moving if they're over the boundary, so
 
 		if(this.x > maxDistance || this.x < -1*maxDistance || this.y > maxDistance || this.y < -1*maxDistance){
+			if(this.x < maxDistance && this.speed.x < 0)this.speed.x = 7;
+			else if(this.x > maxDistance*-1 && this.speed.x > 0)this.speed.x = -7;
 
-			if(this.x > maxDistance && this.speed.x < 0)x = this.speed.x;
-			else if(this.y > maxDistance && this.speed.y < 0)y = this.speed.y;
-			else if(this.x < maxDistance*-1 && this.speed.x > 0)x = this.speed.x;
-			else if(this.y < maxDistance*-1 && this.speed.y > 0)x = this.speed.y;
-			else return;
+			if(this.y < maxDistance && this.speed.y < 0)this.speed.y = 7;
+			else if(this.y > maxDistance*-1 && this.speed.y > 0)this.speed.y = -7;
+			//this.speed.y = this.speed.y * -1;
 		}
 
 		this.x = this.x + x;//Move the player.
 		this.y = this.y + y;//Move the player.
-        
-        /*
-        if(Math.abs(ctx.x) > Math.abs(maxDistance) - canvas.width/2){
-        	if(ctx.x > 0){
-        		console.log('In this if');
-        		x = x - (ctx.x - maxDistance);
-        	}
-        	else if (ctx.x < 0){
-
-        	}
-        }
-        */
 
 	    ctx.translate(x*-1, y*-1);//Then the camera.
 	    ctx.x = ctx.x + x;
@@ -848,7 +868,85 @@ function startAdventure(username){
 
 	//End of network stuff
 
-    
+    //Start of Player UI
+    //var images = [];
+	//const sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
+	/*
+    var rockPaperScissors = {
+    	'rock':{
+    		img:'imgs/rockBig.png',
+    		weakness:'paper',
+    		damageHP:30,
+    		damageArmor:0,
+    		accuracy:10,
+    		deflectionPercentage:70, //amount of damage negated by armor
+    		onHitFunction:undefined
+    	},
+    	'paper':{
+    		img:'imgs/paperBig.png',
+    		weakness:'scissors',
+    		damageHP:5,
+    		damageArmor:5,
+    		accuracy:5,
+    		deflectionPrecentage:35,
+    		onHitFunction:undefined
+    	},
+    	'scissors':{
+    		img:'imgs/scissorsBig.png',
+    		weakness:'rock',
+    		damageHP:0,
+    		damageArmor:30,
+    		accuracy:5,
+    		deflectionPercentage:0, //Amount of damage negated by armor
+    		onHitFunction:undefined
+    	}
+    }
+
+    var getUI = function(){
+    	var counter = 0;
+
+		function check(elementName){
+			var element = rockPaperScissors[elementName];
+			element.index = counter;
+
+			$('#' + elementName).remove();
+
+			$('body').append('<div id = ' + elementName + ' class = hotBarBox style=left:' + (canvas.width*0.8 - Object.keys(rockPaperScissors).length*40 + element.index*80) + 'px; > <img src = ' + element.img + '> </div>');
+			var elmtDiv = $('#' + elementName);
+
+			if(elementName == localPlayer.currentWeapon && localPlayer.outlineCurrentWeapon){
+				elmtDiv.css('border-color', 'rgba(255, 0, 0, 0.115)');
+				elmtDiv.css('background-color', 'rgba(255, 0, 0, 0.1)');
+			}
+
+			function refresh(){
+				elmtDiv.html('<img src = ' + element.img + '>');
+			}
+
+			elmtDiv.on('mouseenter', function(){
+				elmtDiv.empty();
+				elmtDiv.append('<h2>' + (element.index + 1) + '</h2>');
+				setTimeout(refresh, 500);
+			});
+
+			elmtDiv.on('click', function(){
+				localPlayer.currentWeapon = elementName;
+				getUI();
+			});
+
+			elmtDiv.on('mouseleave', refresh);
+
+			counter = counter + 1;
+		}
+
+	    for(var elementName in rockPaperScissors){
+	    	check(elementName);
+		}
+	}
+	getUI();
+	callOnResize.push(getUI);
+    //End of Player UI
+    */
     
     var getGradients = function(){
     	//This gradient is for the grey background
@@ -894,7 +992,7 @@ function startAdventure(username){
 
         ctx.lineWidth = 5;
 
-        ctx.strokeRect(maxDistance*-1, maxDistance*-1, maxDistance*2, maxDistance*2);
+        ctx.strokeRect((maxDistance+5)*-1, (maxDistance+5)*-1, (maxDistance+5)*2, (maxDistance+5)*2);
 
         ctx.lineWidth = 1;
     }
