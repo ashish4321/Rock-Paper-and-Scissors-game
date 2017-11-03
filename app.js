@@ -65,6 +65,14 @@ io.on('connection', function(client) {
 		client.broadcast.emit('healthUpdate', this.username, health);
 	});
 
+	client.on('launchAttack', function(target, weapon, attackStats){
+		client.broadcast.emit('launchAttack', this.username, weapon, target, attackStats);
+	});
+
+	client.on('requestAttack', function(attacker, attackStats){
+		client.broadcast.emit('requestAttack', this.username, attacker, attackStats);
+	});
+
 
 	client.on('messages', function(data) {//If we get a message, it comes with some data
         client.emit('chatMessage', this.username, data);//Send message back to the guy who sent it

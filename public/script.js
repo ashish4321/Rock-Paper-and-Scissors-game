@@ -136,6 +136,7 @@ function startScreen(){
 
 					$('#play').on('click', () => {//If they press play:
 						//We'll use arrow syntax because this function doesn't need it's own instance of this.
+						username = $('#usernameInputBox').text();
 						testUserName($('#usernameInputBox').text(), function(){//Send testUserName their username,
 							cleanUp();//Disable the start screen
 							nameBox.remove();//Remove the prompt box
@@ -145,6 +146,7 @@ function startScreen(){
 
 					$('#save').on('click', () => {//If they press save,
 						//Using arrow function for efficiency
+						username = $('#usernameInputBox').text();
 						testUserName($('#usernameInputBox').text(), function(){//send testUsername their username,
 							cleanUp();//Disable the start screen
 							setCookie('username', $('#usernameInputBox').text(), 30);//Save it as a cookie.
@@ -460,7 +462,16 @@ function startAdventure(username){
     	this.health = 100;
     	this.maxHealth = this.health;
 
+    	this.armor = this.health/4;
+    	this.maxArmor = this.maxHealth/2;
+
     	this.keyMaps = {};//This stores all of the user input logic.
+    	this.canAttack = true;
+    	
+    	//Attack values
+    	this.currentWeapon = undefined;//Once items are defined, this is set to a rock.
+    	this.hasLaunchedAttack = false;
+    	this.launchedAttackWith = undefined;
 
     	this.damage = function(amount, dealtBy){
     		if(this.health < 0)return;//Because there's no use in killing that which is already dead.
@@ -479,8 +490,16 @@ function startAdventure(username){
     		this.health = this.maxHealth;
     	}
 
-    	this.attack = function(damage, dealtBy, weapon){
+    	this.launchAttack = function(targetUsername, attackStats){//STAB THEM!
+    		this.hasLaunchedAttack = true;
+    		this.latestWeapon = this.currentWeapon;
+    		socket.emit('launchAttack', targetUsername, this.latestWeapon.name, attackStats);
+    		otherPlayers[targetUsername].getAttacked(localPlayer, attackStats);
+    	}
 
+    	this.getAttacked = function(attacker, attackStats){
+    		var weapon = attacker.latestWeapon;
+    		weapon.onHit(this, attacker, attackStats);
     	}
 
     	this.move = function(x, y){
@@ -552,9 +571,21 @@ function startAdventure(username){
 
 	    	ctx.fill();//Fill him in and finish drawing.
 
+
+	    	var armorGradient = ctx.createRadialGradient(this.x, this.y, 16, this.x, this.y, 0);
+	    	armorGradient.addColorStop(0, 'rgba(150, 150, 150, ' + this.armor/this.maxArmor + ')');
+	    	armorGradient.addColorStop(1, 'rgba(150, 150, 150, 0)');
+
+	    	ctx.fillStyle = armorGradient;//Use the aforementioned gradient.
+
+	    	ctx.beginPath();//Start drawing him
+	    	ctx.arc(this.x, this.y, 16, 0, 2*Math.PI);//Draw him as a big ole' circle.
+
+	    	ctx.fill();//Fill him in and finish drawing.
 	    }
 
 	    this.getSwing = function(targetX, targetY, rotation){
+	    	if(!this.canAttack)return;
 	    	function swing(targetX, targetY){//Class constructor
 				//Variable declaration
 				//Transformation stuff
@@ -640,8 +671,7 @@ function startAdventure(username){
     //localPlayer variables
     var localPlayer = new player();//Local player is the one this client is controlling
     localPlayer.username = username;//We'll record his username.
-    localPlayer.currentWeapon = 'rock';//The local player is currently using a rock. How original.
-    localPlayer.outlineCurrentWeapon = true;
+    localPlayer.outlineCurrentWeapon = true;//If this is turned off, then the hotbar box that the player has selected doesn't go red.
 	localPlayer.keyMaps = {//So we'll give him some controls.
 		'w':function(){//These could be outsourced to a more efficent function.
 			localPlayer.speed.y = (localPlayer.speed.y - localPlayer.speedIncrease > localPlayer.maxSpeed*-1) ? localPlayer.speed.y - localPlayer.speedIncrease : localPlayer.maxSpeed*-1;
@@ -682,31 +712,31 @@ function startAdventure(username){
 				localPlayer.getSwing(0, 0, localPlayer.rotation);//And then record it for yourself.
 				//The params tell the swing function where to point it's swing at.
 			}
-		}/*,
+		},
 		'1':function(){
-			for(var element in rockPaperScissors){
-				if(rockPaperScissors[element].index == 0){
+			for(var element in itemList){
+				if(itemList[element].index == 0){
 					$('#' + element).click();
 					return;
 				}
 			}
 		},
 		'2':function(){
-			for(var element in rockPaperScissors){
-				if(rockPaperScissors[element].index == 1){
+			for(var element in itemList){
+				if(itemList[element].index == 1){
 					$('#' + element).click();
 					return;
 				}
 			}
 		},
 		'3':function(){
-			for(var element in rockPaperScissors){
-				if(rockPaperScissors[element].index == 2){
+			for(var element in itemList){
+				if(itemList[element].index == 2){
 					$('#' + element).click();
 					return;
 				}
 			}
-		}*/
+		}
 	};
 
 	localPlayer.swingRechargeCounter = Date.now() + 1;//This keeps track of when you can swing and when you can't.
@@ -728,12 +758,22 @@ function startAdventure(username){
 		//Obviously we don't want them to keep moving if they're over the boundary, so
 
 		if(this.x > maxDistance || this.x < -1*maxDistance || this.y > maxDistance || this.y < -1*maxDistance){
-			if(this.x < maxDistance && this.speed.x < 0)this.speed.x = 7;
-			else if(this.x > maxDistance*-1 && this.speed.x > 0)this.speed.x = -7;
-
-			if(this.y < maxDistance && this.speed.y < 0)this.speed.y = 7;
-			else if(this.y > maxDistance*-1 && this.speed.y > 0)this.speed.y = -7;
-			//this.speed.y = this.speed.y * -1;
+			if(this.x > maxDistance){
+				x = -4;
+				this.speed.x = x*2.5;
+			}
+			if(this.y > maxDistance){
+				y = -4;
+				this.speed.y = y*2.5;
+			}
+			if(this.x < maxDistance*-1){
+				x = 4;
+				this.speed.x = x*2.5;
+			}
+			if(this.y < maxDistance*-1){
+				y = 4;
+				this.speed.y = y*2.5;
+			}
 		}
 
 		this.x = this.x + x;//Move the player.
@@ -758,8 +798,10 @@ function startAdventure(username){
     				y:player.y + swing.radius * Math.sin(swing.rotation) //Uses sin to do the same.
     			}
 
-    			if(swingTip.x > this.x - 16 && swingTip.x < this.x + 16 && swingTip.y > this.y - 16 && swingTip.y < this.y + 16){
-    				this.damage(0.5, player.username);
+    			if(swingTip.x > this.x - 16 && swingTip.x < this.x + 16 && swingTip.y > this.y - 16 && swingTip.y < this.y + 16){//If we're getting poked by the tip of the swing.
+    				var attackStats = {};
+    				attackStats.rotation = swing.rotation;
+    				socket.emit('requestAttack', player.username, attackStats);
     			}
 
     		}.bind(this));
@@ -854,6 +896,23 @@ function startAdventure(username){
 		otherPlayers[username].damage(0);//Damaging zero keeps health stats up to date.
 	});
 
+	socket.on('launchAttack', function(attacker, weapon, target, attackStats){
+		target = (target == localPlayer.username) ? localPlayer : otherPlayers[target];
+		//Quick little ternary operator to get our target, be it the local player or someone else.
+
+		if(!otherPlayers[attacker] || !target)return;
+		//No use in giving them the info if they don't know who it's for.
+
+		otherPlayers[attacker].latestWeapon = itemList[weapon];
+		target.getAttacked(otherPlayers[attacker], attackStats);
+	});
+
+	socket.on('requestAttack', function(target, attacker, attackStats){
+		if(attacker == localPlayer.username){
+			localPlayer.launchAttack(target, attackStats);
+		}
+	});
+
 	var transmitPlayer = function(){//This sends our movement information to the server
 		socket.emit('movementUpdate', {//We'll send this data to the server:
 			x:localPlayer.x, //Our x,
@@ -871,50 +930,89 @@ function startAdventure(username){
     //Start of Player UI
     //var images = [];
 	//const sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
-	/*
-    var rockPaperScissors = {
+	
+    var itemList = {
     	'rock':{
+    		name:'rock',
+    		type:'rock',
     		img:'imgs/rockBig.png',
     		weakness:'paper',
     		damageHP:30,
     		damageArmor:0,
     		accuracy:10,
     		deflectionPercentage:70, //amount of damage negated by armor
-    		onHitFunction:undefined
+    		behavior:'basic',
+    		onSuccessfulAttack:function(victim, attacker, attackStats){
+    			victim.damage(this.damageHP + (Math.round(Math.random()*this.accuracy) - this.accuracy));
+    		}
     	},
     	'paper':{
+    		name:'paper',
+    		type:'paper',
     		img:'imgs/paperBig.png',
     		weakness:'scissors',
-    		damageHP:5,
-    		damageArmor:5,
-    		accuracy:5,
-    		deflectionPrecentage:35,
-    		onHitFunction:undefined
+    		armorBoost:15,
+    		behavior:'basic',
+    		onSuccessfulAttack:function(victim, attacker, attackStats){
+    			victim.armor = (victim.armor + this.armorBoost > victim.maxArmor) ? maxArmor : victim.armor + this.armorBoost;
+    			console.log(victim.armor);
+    		}
     	},
     	'scissors':{
+    		name:'scissors',
+    		type:'scissors',
     		img:'imgs/scissorsBig.png',
     		weakness:'rock',
     		damageHP:0,
     		damageArmor:30,
     		accuracy:5,
     		deflectionPercentage:0, //Amount of damage negated by armor
-    		onHitFunction:undefined
-    	}
+    		behavior:'basic',
+    		onSuccessfulAttack:function(victim, attacker, attackStats){
+    			victim.armor = victim.armor - this.damageArmor + (Math.round(Math.random()*this.accuracy) - this.accuracy)
+    		}
+		}
     }
+
+    var itemBehaviors = {
+    	'basic':function(victim, attacker, attackStats){
+			victim.speed.x = 7*Math.cos(attackStats.rotation);
+			victim.speed.y = 7*Math.sin(attackStats.rotation);
+
+			attacker.canAttack = false;
+			setTimeout(function(){
+				attacker.canAttack = true;
+			}, 1000);
+
+			if(victim.latestWeapon && victim.latestWeapon.name == this.weakness){
+				victim.latestWeapon.onSuccessfulAttack(victim, attacker, attackStats);
+
+				victim.latestWeapon = undefined;
+				attacker.latestWeapon = undefined;
+			}
+		}
+    };
+
+    for(var itemName in itemList){
+    	var item = itemList[itemName];
+    	item.onHit = itemBehaviors[item.behavior]
+    }
+    localPlayer.currentWeapon = itemList['rock'];
+
 
     var getUI = function(){
     	var counter = 0;
 
 		function check(elementName){
-			var element = rockPaperScissors[elementName];
+			var element = itemList[elementName];
 			element.index = counter;
 
 			$('#' + elementName).remove();
 
-			$('body').append('<div id = ' + elementName + ' class = hotBarBox style=left:' + (canvas.width*0.8 - Object.keys(rockPaperScissors).length*40 + element.index*80) + 'px; > <img src = ' + element.img + '> </div>');
+			$('body').append('<div id = ' + elementName + ' class = hotBarBox style=left:' + (canvas.width*0.8 - Object.keys(itemList).length*40 + element.index*80) + 'px; > <img src = ' + element.img + '> </div>');
 			var elmtDiv = $('#' + elementName);
 
-			if(elementName == localPlayer.currentWeapon && localPlayer.outlineCurrentWeapon){
+			if(elementName == localPlayer.currentWeapon.name && localPlayer.outlineCurrentWeapon){
 				elmtDiv.css('border-color', 'rgba(255, 0, 0, 0.115)');
 				elmtDiv.css('background-color', 'rgba(255, 0, 0, 0.1)');
 			}
@@ -930,7 +1028,7 @@ function startAdventure(username){
 			});
 
 			elmtDiv.on('click', function(){
-				localPlayer.currentWeapon = elementName;
+				localPlayer.currentWeapon = element;
 				getUI();
 			});
 
@@ -939,14 +1037,14 @@ function startAdventure(username){
 			counter = counter + 1;
 		}
 
-	    for(var elementName in rockPaperScissors){
+	    for(var elementName in itemList){
 	    	check(elementName);
 		}
 	}
 	getUI();
 	callOnResize.push(getUI);
     //End of Player UI
-    */
+    
     
     var getGradients = function(){
     	//This gradient is for the grey background
