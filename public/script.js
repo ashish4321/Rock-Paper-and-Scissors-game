@@ -18,7 +18,11 @@ var socket;
 
 //images variables
 var images = [];
-const sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
+const sources = [
+	'imgs/rockSmall.png', 'imgs/paperSmall.png', 'imgs/scissorsSmall.png', 
+	'imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png',
+	'imgs/rockBig.png', 'imgs/paperBig.png', 'imgs/scissorsBig.png'
+];
 
 //Universal Functions. 
 //Generally speaking, the more simple the function, the higher up in the script it is.
@@ -64,6 +68,32 @@ function getCookie(cname) {//Also from w3 schools
         }
     }
     return "";//If the cookie just isn't there, return an empty string.
+}
+
+function changeImageTransparency(image, transparencyPercentage){
+	var canvasOffScreen = document.createElement('canvas');
+	canvasOffScreen.width = image.height;
+	canvasOffScreen.height = image.width;
+	var ctxOffScreen = canvasOffScreen.getContext('2d');
+
+	ctxOffScreen.drawImage(image, 0, 0);
+	var imageData = ctxOffScreen.getImageData(0, 0, canvasOffScreen.width, canvasOffScreen.height);
+	var data = imageData.data;
+
+	for(var index = 0; index < data.length; index = index + 4){
+		//var red   = data[index + 0];
+		//var green = data[index + 1];
+		//var blue  = data[index + 2];
+		var alpha = data[index + 3];
+		data[index + 3] = Math.round(alpha*transparencyPercentage);
+	}
+
+	ctxOffScreen.clearRect(0, 0, canvasOffScreen.width, canvasOffScreen.height);
+	ctxOffScreen.putImageData(imageData, 0, 0);
+
+	var newImage = new Image();
+	newImage.src = canvasOffScreen.toDataURL("image/png");
+	return newImage;
 }
 
 
@@ -378,7 +408,8 @@ function startScreen(){
 
 	animateScreen();//Call the recursive function, because it has to start somewhere.
 
-	$(document).on('click', function checkForButtons(event){//And then add logic for the clicking of the buttons,
+	$(document).on('click touchstart', function checkForButtons(event){//And then add logic for the clicking of the buttons,
+		event = (event.touches) ? event.touches[0] : event;
 		buttons.forEach(function(button){//By looping through each of them,
 
 			var bDim = button.dimensions;//And setting their dimensions as a variable, for ease of access.
@@ -389,18 +420,18 @@ function startScreen(){
 					//These functions give the next function in the chain some ability to control the start screen.
                     var cleanUp = function(){//This function ties up the loose ends that exist for the start screen.
 						startScreenOn = false//Stop updating the screen, to kill it.
-	                    $(document).off("click", checkForButtons);//Stop checking for buttons/
+	                    $(document).off("click touchstart", checkForButtons);//Stop checking for buttons/
 	                    callOnResize = [];//And clear the functions that are for resizing the start screen, since there is no start screen.
                 	};
 
                 	//These functions give the next function in the chain some ability to control the start screen.
                 	var cleanUpButtons = function(){
-                		$(document).off("click", checkForButtons);//This turns off this function's parent function.
+                		$(document).off("click touchstart", checkForButtons);//This turns off this function's parent function.
                 	};
 
                 	//These functions give the next function in the chain some ability to control the start screen.
                 	var reviveButtons = function(){
-                		$(document).on("click", checkForButtons);//This turns this function's parent function back on.
+                		$(document).on("click touchstart", checkForButtons);//This turns this function's parent function back on.
                 	};
 
                     //Calling function for this button:
@@ -424,6 +455,32 @@ function startAdventure(username){
     var gridGrad;// grid gradient
 
     var maxDistance = 700;
+
+	ctx.fillStyle = backgroundGradient;//And then we'll give them a loading screen that uses the default background.
+	ctx.fillRect(0, 0, canvas.width, canvas.height);//That fills up the entire screen
+	ctx.fillStyle = 'gray';
+	ctx.fillText('Loading', canvas.width/2 - ctx.measureText('Loading').width/2, canvas.height/2);//And says loading.
+
+    var transparentImages = {};
+
+    var imageCounter = 0;
+    images.forEach(function(image){
+    	if(image.src.indexOf('Medium') + 1){
+    		for(let transparency = 0.99; transparency >= 0; transparency = (transparency - 0.01).toFixed(2)){
+    			(function(transparency){//Wrapped in function so that each newImage has it's own context.
+	    			let newImage = changeImageTransparency(image, transparency);
+	    			let name = image.src.split('/')[4].split('.')[0] + 'Transparency' + transparency;
+
+	    			newImage.onload = function(){
+	    				transparentImages[name] = newImage;
+
+	    				imageCounter = imageCounter + 1;
+	    				if(imageCounter === 300)animationLoop();
+	    			}
+    			})(transparency);
+    		}
+    	}
+    });
 
 
     function player(){
@@ -458,27 +515,30 @@ function startAdventure(username){
     	this.intensityMaxDefault = this.intensityMax;
     	this.intensityDifference = this.intensityMax - this.intensityMin;
 
-    	//Health values
+    	//Health and armor values
     	this.health = 100;
     	this.maxHealth = this.health;
-
     	this.armor = this.health/4;
-    	this.maxArmor = this.maxHealth/2;
+    	this.maxArmor = this.maxHealth;
 
     	this.keyMaps = {};//This stores all of the user input logic.
-    	this.canAttack = true;
+    	this.isFighting = [];
     	
     	//Attack values
-    	this.currentWeapon = undefined;//Once items are defined, this is set to a rock.
-    	this.hasLaunchedAttack = false;
+    	this.currentWeapon = undefined;//Once items are defined, this is set to rock.
     	this.launchedAttackWith = undefined;
+    	this.attacks = [];
+    	
 
     	this.damage = function(amount, dealtBy){
-    		if(this.health < 0)return;//Because there's no use in killing that which is already dead.
+    		if(this.health <= 0)return;//Because there's no use in killing that which is already dead.
 
     		this.health = this.health - amount;//Knock off however much health needs to be knocked off.
 
-    		if(this.health < 0)this.kill(dealtBy);//Boom! ya ded!
+    		if(this.health <= 0){
+    			this.kill(dealtBy);//Boom! Ya ded!
+    			return;
+    		}
 
     		this.intensityMax = (this.intensityDifference) + (this.intensityMaxDefault - this.intensityDifference)*(this.health/this.maxHealth);
     		//The above line makes the player's color less intense if they've been damaged, but not so much that they become entirely invisible.
@@ -487,7 +547,14 @@ function startAdventure(username){
     	};
 
     	this.kill = function(dealtBy){
-    		this.health = this.maxHealth;
+    		this.health = 0;
+
+    		this.intensityMax = 0.05;
+    		this.intensityMin = 0.05;
+    		this.intensity = 0.05;
+
+    		//Maybe a death animation?
+    		//Draw a grave where they die?
     	}
 
     	this.launchAttack = function(targetUsername, attackStats){//STAB THEM!
@@ -573,8 +640,9 @@ function startAdventure(username){
 
 
 	    	var armorGradient = ctx.createRadialGradient(this.x, this.y, 16, this.x, this.y, 0);
-	    	armorGradient.addColorStop(0, 'rgba(150, 150, 150, ' + this.armor/this.maxArmor + ')');
-	    	armorGradient.addColorStop(1, 'rgba(150, 150, 150, 0)');
+	    	armorGradient.addColorStop(0, 'rgba(100, 100, 100, 0)');
+	    	armorGradient.addColorStop(0.2, 'rgba(100, 100, 100, ' + (this.armor/this.maxArmor)*0.85 + ')');
+	    	armorGradient.addColorStop(1, 'rgba(100, 100, 100, 0)');
 
 	    	ctx.fillStyle = armorGradient;//Use the aforementioned gradient.
 
@@ -584,8 +652,44 @@ function startAdventure(username){
 	    	ctx.fill();//Fill him in and finish drawing.
 	    }
 
+	    this.drawUI = function(){
+	    	for(var attacker in this.attacks){
+	    		let attack = this.attacks[attacker];
+
+	    		if(attack.isDying){
+		    		console.log('Here!');
+		    		delete this.attacks[attacker];
+		    		continue;
+		    	}
+
+	    		if(localPlayer.discreteMode)break;
+
+	    		let weapon = itemList[this.attacks[attacker].weapon];
+
+	    		let progressDecimal = (1 - -1*(Date.now() - attack.attackExpires)/10000).toFixed(2);
+	    		progressDecimal = (progressDecimal > 0.30) ? progressDecimal : '0.30';
+
+		    	let image = transparentImages[weapon.type + 'MediumTransparency' + progressDecimal];
+
+		    	//backup
+		    	if(!image)image = (function(){
+		    		let finalImage;
+	    			images.forEach(function(img){
+		    			let type = img.src.split('/')[4].split('Medium')[0];
+		    			
+		    			if(type == weapon.type){
+		    				finalImage = img;
+		    				return;
+		    			}
+	    			});
+	    			return finalImage;
+	    		})();
+		    	
+		    	ctx.drawImage(image, this.x - image.width/2, this.y - image.height/2);
+	    	}
+	    }
+
 	    this.getSwing = function(targetX, targetY, rotation){
-	    	if(!this.canAttack)return;
 	    	function swing(targetX, targetY){//Class constructor
 				//Variable declaration
 				//Transformation stuff
@@ -671,7 +775,8 @@ function startAdventure(username){
     //localPlayer variables
     var localPlayer = new player();//Local player is the one this client is controlling
     localPlayer.username = username;//We'll record his username.
-    localPlayer.outlineCurrentWeapon = true;//If this is turned off, then the hotbar box that the player has selected doesn't go red.
+    localPlayer.discreteMode = false;//If this is turned off, then the hotbar box that the player has selected doesn't go red.
+
 	localPlayer.keyMaps = {//So we'll give him some controls.
 		'w':function(){//These could be outsourced to a more efficent function.
 			localPlayer.speed.y = (localPlayer.speed.y - localPlayer.speedIncrease > localPlayer.maxSpeed*-1) ? localPlayer.speed.y - localPlayer.speedIncrease : localPlayer.maxSpeed*-1;
@@ -753,6 +858,63 @@ function startAdventure(username){
 	localPlayer.centerCamera();
 	callOnResize.push(localPlayer.centerCamera);//Put this in callOnResize, because we only need this to happen in the center of the screen moves
 
+	localPlayer.drawUI = function(){
+    	var counter = 0;
+    	for(attacker in this.attacks){//Let's draw the attack count down bar.
+
+    		counter = counter + 1;
+    		var attack = this.attacks[attacker];
+
+    		if(attack.isDying){
+    			delete this.attacks[attacker];
+    			continue;
+    		}
+
+    		var height = (canvas.height*0.85)*((Date.now() - attack.attackExpires)/10000);
+    		var width = 25;
+    		var x = ctx.x + canvas.width - 75*counter;
+    		var y = ctx.y + canvas.height - 100;
+
+    		function drawIt(){
+    			ctx.beginPath();
+    			ctx.moveTo(x, y);
+    			ctx.lineTo(x + width, y);
+    			ctx.lineTo(x + width, y + (height - height/5));
+    			ctx.arc(x + width/2, y + (height - height/5), width/2, 0, Math.PI, true);
+    			ctx.fill();
+    		}
+
+    		var otherColors = -1*Math.round(255*((Date.now() - attack.attackExpires)/10000));
+
+    		var horizontalGrad = ctx.createLinearGradient(x, y, x+width, y);
+    		horizontalGrad.addColorStop(0,   'rgba(255, ' + otherColors + ', ' + otherColors + ', 0)');
+    		horizontalGrad.addColorStop(0.4, 'rgba(255, ' + otherColors + ', ' + otherColors + ', 0.2)');
+    		horizontalGrad.addColorStop(0.6, 'rgba(255, ' + otherColors + ', ' + otherColors + ', 0.2)');
+    		horizontalGrad.addColorStop(1,   'rgba(255, ' + otherColors + ', ' + otherColors + ', 0)');
+
+    		var verticalGrad = ctx.createLinearGradient(x, y, x, y+height);
+    		verticalGrad.addColorStop(0,     'rgba(255, ' + otherColors + ', ' + otherColors + ', 0.2)');
+    		verticalGrad.addColorStop(1,     'rgba(255, ' + otherColors + ', ' + otherColors + ', 0.1)');
+
+    		ctx.fillStyle = horizontalGrad;
+    		drawIt();
+
+    		ctx.fillStyle = verticalGrad;
+    		drawIt();
+
+
+    		ctx.fillStyle = 'gray';
+
+    		ctx.font = '12px Roboto';
+    		var heading = 'Attacked By:';
+    		var headingWidth = ctx.measureText(heading).width;
+    		ctx.fillText(heading, x + width/2 - headingWidth/2, y + 15);
+
+    		ctx.font = '15px Roboto';
+    		var attackerWidth = ctx.measureText(attacker).width;
+    		ctx.fillText(attacker, x + width/2 - attackerWidth/2, y + 30);
+    	};
+    }
 
 	localPlayer.move = function(x, y){//Here we overwrite the move function so that the screen moves with the localPlayer.
 		//Obviously we don't want them to keep moving if they're over the boundary, so
@@ -790,6 +952,9 @@ function startAdventure(username){
 
     	//Here we'll loop through all of the swings to see if the player's being hit.
     	for(var playerIndex in otherPlayers){//We'll loop through all of the players,
+
+    		if(localPlayer.health <= 0)break;//No use checking if we're dead.
+
     		var player = otherPlayers[playerIndex];//Cache each player for ease of access and efficiency
 
     		player.swings.forEach(function(swing){//Loop through each player's swings
@@ -801,6 +966,7 @@ function startAdventure(username){
     			if(swingTip.x > this.x - 16 && swingTip.x < this.x + 16 && swingTip.y > this.y - 16 && swingTip.y < this.y + 16){//If we're getting poked by the tip of the swing.
     				var attackStats = {};
     				attackStats.rotation = swing.rotation;
+    				attackStats.startedAt = Date.now();
     				socket.emit('requestAttack', player.username, attackStats);
     			}
 
@@ -811,12 +977,14 @@ function startAdventure(username){
 
     localPlayer.oldDamage = localPlayer.damage;//First, cache oldDamage
     localPlayer.damage = function(amount, dealtBy){//overwrite
-    	if(localPlayer.health < 0)return;//No need to kill what's already dead.
+    	if(localPlayer.health <= 0)return;//No need to kill what's already dead.
     	localPlayer.oldDamage(amount, dealtBy);//and then call oldDamage, so we're really just adding on
-    	socket.emit('healthUpdate', localPlayer.health, dealtBy);//Update health.
+    	socket.emit('healthUpdate', localPlayer.health, dealtBy);//Update health for all
     }
 
-    localPlayer.kill = function(dealtBy){
+    localPlayer.oldKill = localPlayer.kill;//Cache
+    localPlayer.kill = function(dealtBy){//Overwrite
+    	localPlayer.oldKill();//call cached, so we're just adding on
     	var keyMapsCache = this.keyMaps;
 
     	this.keyMaps = {};
@@ -844,7 +1012,7 @@ function startAdventure(username){
     $('#sendBox').append('<div id="chatInput" contenteditable=true></div>');//This makes the chat box
     $('#sendBox').append('<div id = sendButton>Send</div>');//This makes the chat box
 
-    socket.on('chatMessage', function(username, data){//On reception of chat message
+    function chat(username, data){
 		$('#chatBox').append('<span style = color:darkgrey;>' + '<span style = color:gray;font-weight:bold;>[' + username + ']</span> ' + data + "<br/>" + '</span>');
 		//Put the chat message in the onscreen box.
 
@@ -855,13 +1023,27 @@ function startAdventure(username){
 		});
 		//And then, for each row that exceeds the chat's limit, remove one chat message from the top.
 		for(var contentHeight = contentHeight; contentHeight > 125; contentHeight = contentHeight - 18)$('#chatBox').children().first().remove();
+    }
+
+    socket.on('chatMessage', function(username, data){//On reception of chat message
+		chat(username, data);
 	});
 
     $('#sendButton').on('click', function(event){
 		event.preventDefault();//Just in case there's some built in thingymobob that will get in our way.
 		var message = $('#chatInput').text();//Get the message
-		if(message === '')return;//Don't bother sending if it's spammy.
 		$('#chatInput').text('');//Reset the chat input
+
+		if(message === '')return;//Don't bother sending if it's spammy.
+		if(message[0] == '/'){//if it starts with slash,
+			if(commands[message.substring(1)]){//And it's a command
+				commands[message.substring(1)]();//call it.
+				chat('Server', 'Command Recieved.');
+			}
+			else chat('Server', "That's not even a command.");//If it's not, let the user know so.
+			return;
+		}
+
 		socket.emit('messages', message);//And then send the message to the server, who will then broadcast it to everyone else.
 	 });
     //End of chat stuffs
@@ -930,6 +1112,12 @@ function startAdventure(username){
     //Start of Player UI
     //var images = [];
 	//const sources = ['imgs/rockMedium.png', 'imgs/paperMedium.png', 'imgs/scissorsMedium.png'];
+
+	var commands = {
+		'toggleDiscrete':function(){
+			localPlayer.discreteMode = !localPlayer.discreteMode;
+		}
+	}
 	
     var itemList = {
     	'rock':{
@@ -942,8 +1130,8 @@ function startAdventure(username){
     		accuracy:10,
     		deflectionPercentage:70, //amount of damage negated by armor
     		behavior:'basic',
-    		onSuccessfulAttack:function(victim, attacker, attackStats){
-    			victim.damage(this.damageHP + (Math.round(Math.random()*this.accuracy) - this.accuracy));
+    		onSuccessfulAttack:function(looser, winner, attackStats){
+    			looser.damage(this.damageHP + (Math.round(Math.random()*this.accuracy) - this.accuracy), winner.username);
     		}
     	},
     	'paper':{
@@ -953,9 +1141,8 @@ function startAdventure(username){
     		weakness:'scissors',
     		armorBoost:15,
     		behavior:'basic',
-    		onSuccessfulAttack:function(victim, attacker, attackStats){
-    			victim.armor = (victim.armor + this.armorBoost > victim.maxArmor) ? maxArmor : victim.armor + this.armorBoost;
-    			console.log(victim.armor);
+    		onSuccessfulAttack:function(looser, winner, attackStats){
+    			winner.armor = (winner.armor + this.armorBoost > winner.maxArmor) ? winner.maxArmor : winner.armor + this.armorBoost;
     		}
     	},
     	'scissors':{
@@ -968,27 +1155,70 @@ function startAdventure(username){
     		accuracy:5,
     		deflectionPercentage:0, //Amount of damage negated by armor
     		behavior:'basic',
-    		onSuccessfulAttack:function(victim, attacker, attackStats){
-    			victim.armor = victim.armor - this.damageArmor + (Math.round(Math.random()*this.accuracy) - this.accuracy)
+    		onSuccessfulAttack:function(looser, winner, attackStats){
+    			looser.armor = looser.armor - this.damageArmor + (Math.round(Math.random()*this.accuracy) - this.accuracy);
+    			looser.armor = (looser.armor < 0) ? 0 : looser.armor;
     		}
 		}
     }
 
     var itemBehaviors = {
     	'basic':function(victim, attacker, attackStats){
+
+    		if((attacker.isFighting.indexOf(victim.username) + 1)){
+    			return;
+    		}
+
+    		function cleanUp(){
+    			[victim, attacker].forEach(function(player, index){
+    				let otherPlayer = [victim, attacker][(index == 0) ? 1 : 0];
+	    			player.latestWeapon = undefined;
+
+	    			if(player.attacks[otherPlayer.username]){
+	    				player.attacks[otherPlayer.username].isDying = true;
+	    				clearTimeout(player.attacks[otherPlayer.username].onExpiration);
+	    			}
+
+	    			setTimeout(function(){
+			    		player.isFighting.splice(player.isFighting.indexOf(otherPlayer), 1);
+		    		}.bind(this), 1000);
+	    		}.bind(this));
+    		}
+
 			victim.speed.x = 7*Math.cos(attackStats.rotation);
 			victim.speed.y = 7*Math.sin(attackStats.rotation);
 
-			attacker.canAttack = false;
-			setTimeout(function(){
-				attacker.canAttack = true;
-			}, 1000);
+			attacker.isFighting.push(victim.username);//Maybe integrate the isFighting system and the victim.attacks?
+			attacker.swings = [];
+			
 
-			if(victim.latestWeapon && victim.latestWeapon.name == this.weakness){
-				victim.latestWeapon.onSuccessfulAttack(victim, attacker, attackStats);
+			if(victim.latestWeapon){//If our attack is a response to the second attack
+				if(victim.latestWeapon.type == this.weakness){
+					//If the victim's weapon type is our weakness, then we'd loose, so when we 
+					victim.latestWeapon.onSuccessfulAttack(attacker, victim, attackStats);
+					//send the attack info to the victim's weapon, we'll put attacker first because the attacker is the looser.
+				}
+				else if(this.type == victim.latestWeapon.weakness){
+					//If our weapon type is the victim's weakness, then we'd win, so when we
+					this.onSuccessfulAttack(victim, attacker, attackStats);
+					//send the attack info to our weapon, we'll put the victim's name first because they're the looser.
+				}
 
-				victim.latestWeapon = undefined;
-				attacker.latestWeapon = undefined;
+				cleanUp();//If they respond, no matter what they responded with, then their attack will stop expiring: this mini battle is over.
+			}
+
+			else {//Or if we're the first one to attack in this battle
+				attackStats.attackExpires = attackStats.startedAt + 10000;//Set an expiry date for our attack,
+				//so if they don't make a reposte by then, they're going to lose the fight.
+
+				attackStats.onExpiration = setTimeout(function(){//And if they haven't made a reposte by then,
+					this.onSuccessfulAttack(victim, attacker, attackStats);
+					//We'll tell our weapon that, and put their name first to signify that they lost.
+					cleanUp();//And then end the battle.
+				}.bind(this), Date.now() - attackStats.startedAt + 10000);
+
+				attackStats.weapon = this.name;
+				victim.attacks[attacker.username] = attackStats;//We'll record this attack in the victim's attacks
 			}
 		}
     };
@@ -1012,7 +1242,7 @@ function startAdventure(username){
 			$('body').append('<div id = ' + elementName + ' class = hotBarBox style=left:' + (canvas.width*0.8 - Object.keys(itemList).length*40 + element.index*80) + 'px; > <img src = ' + element.img + '> </div>');
 			var elmtDiv = $('#' + elementName);
 
-			if(elementName == localPlayer.currentWeapon.name && localPlayer.outlineCurrentWeapon){
+			if(elementName == localPlayer.currentWeapon.name && !localPlayer.discreteMode){
 				elmtDiv.css('border-color', 'rgba(255, 0, 0, 0.115)');
 				elmtDiv.css('background-color', 'rgba(255, 0, 0, 0.1)');
 			}
@@ -1107,7 +1337,7 @@ function startAdventure(username){
 	$(document).on('keydown keyup', onkeydown);//Call that handy lil' function we defined a few lines up.
 	$(document).on('mousedown mouseup', function(event){
 		var buttonNameArray = ['left-button', 'middle-button', 'right-button'];
-		//This records all of the names of buttons that we can tell are being pressed, the index aligns with the number each button is assigned.
+		//This records all of the names of buttons that we can tell are being pressed, the index aligns with the number each button is assigned via event.button
 		pressedKeys[buttonNameArray[event.button]] = event.type == 'mousedown';
 		//That way, we can record the state of the button under it's name, instead of just some vague number.
 		currentMouseEvent = event;//This way we can access the mouse's information from anywhere in the program.
@@ -1116,9 +1346,19 @@ function startAdventure(username){
 		});
 		else $(document).off('mousemove');//But if the mouse isn't being held down, we don't need the information(right now, maybe we'll record the mousemovement no matter what later)
 	});
+	$(document).on('touchstart touchend', function(event){
+		pressedKeys['left-button'] = event.type == 'touchstart';
+
+		currentMouseEvent = event.touches[0];
+		if(event.type == 'touchstart')$(document).on('touchmove', function(event){
+			event.preventDefault();
+			currentMouseEvent = event.touches[0];
+		});
+		else $(document).off('touchmove');
+	});
 
 
-    var animationLoop = function(){//This function is the glue that holds all of the other guys together
+    function animationLoop(){//This function is the glue that holds all of the other guys together
         if(isPaused)return;//Stop if the game is paused.
         
         drawBackground();//This draws the background
@@ -1126,12 +1366,13 @@ function startAdventure(username){
 
         for(var playerIndex in otherPlayers){//And then we loop through the record of everyone he's player with,
         	otherPlayers[playerIndex].update();//and update each of them.
+        	otherPlayers[playerIndex].drawUI();
         }
         
+        localPlayer.drawUI();
+
         requestAnimationFrame(animationLoop);//And then it calls itself again.
     }
-    
-    animationLoop();//This starts the animation loop.
 }
 
 //End of Universal Functions
