@@ -70,30 +70,53 @@ function getCookie(cname) {//Also from w3 schools
     return "";//If the cookie just isn't there, return an empty string.
 }
 
+function getOffScreenCanvas(image){
+	var offScreen = {};
+	offScreen.canvas = document.createElement('canvas');
+	offScreen.canvas.width = image.height;
+	offScreen.canvas.height = image.width;
+	offScreen.ctx = offScreen.canvas.getContext('2d');
+
+	offScreen.ctx.drawImage(image, 0, 0);
+
+	return offScreen;
+}
+
 function changeImageTransparency(image, transparencyPercentage){
-	var canvasOffScreen = document.createElement('canvas');
-	canvasOffScreen.width = image.height;
-	canvasOffScreen.height = image.width;
-	var ctxOffScreen = canvasOffScreen.getContext('2d');
+	let offScreen = getOffScreenCanvas(image);
 
-	ctxOffScreen.drawImage(image, 0, 0);
-	var imageData = ctxOffScreen.getImageData(0, 0, canvasOffScreen.width, canvasOffScreen.height);
-	var data = imageData.data;
+	let imageData = offScreen.ctx.getImageData(0, 0, offScreen.canvas.width, offScreen.canvas.height);
+	let data = imageData.data;
 
-	for(var index = 0; index < data.length; index = index + 4){
-		//var red   = data[index + 0];
-		//var green = data[index + 1];
-		//var blue  = data[index + 2];
-		var alpha = data[index + 3];
+	for(let index = 0; index < data.length; index = index + 4){
+		//let red   = data[index + 0];
+		//let green = data[index + 1];
+		//let blue  = data[index + 2];
+		let alpha = data[index + 3];
 		data[index + 3] = Math.round(alpha*transparencyPercentage);
 	}
 
-	ctxOffScreen.clearRect(0, 0, canvasOffScreen.width, canvasOffScreen.height);
-	ctxOffScreen.putImageData(imageData, 0, 0);
+	offScreen.ctx.clearRect(0, 0, offScreen.canvas.width, offScreen.canvas.height);
+	offScreen.ctx.putImageData(imageData, 0, 0);
 
-	var newImage = new Image();
-	newImage.src = canvasOffScreen.toDataURL("image/png");
-	return newImage;
+	return offScreen.canvas;
+}
+
+function getImageChunk(image){
+	let offScreen = getOffScreenCanvas(image);
+
+	let width  = Math.round(Math.random()*(image.width - 1)) + 1;//anything from 1 to image.width(zero is illegal)
+	let height = Math.round(Math.random()*(image.height - 1)) + 1;//same for height
+	let x = Math.round(Math.random()*image.width - width);//max will be the total width divided by the width of the chunk, minimum would be 0
+	let y = Math.round(Math.random()*image.height - height);//same for height
+
+	let imageData = offScreen.ctx.getImageData(x, y, width, height);
+	offScreen.canvas.width = width;
+	offScreen.canvas.height = height;
+
+	offScreen.ctx.putImageData(imageData, 0, 0);
+
+	return offScreen.canvas;
 }
 
 
@@ -454,34 +477,12 @@ function startAdventure(username){
     var mapGrad;// map gradient
     var gridGrad;// grid gradient
 
-    var maxDistance = 700;
+    var maxDistance = 1850;
 
 	ctx.fillStyle = backgroundGradient;//And then we'll give them a loading screen that uses the default background.
-	ctx.fillRect(0, 0, canvas.width, canvas.height);//That fills up the entire screen
-	ctx.fillStyle = 'gray';
-	ctx.fillText('Loading', canvas.width/2 - ctx.measureText('Loading').width/2, canvas.height/2);//And says loading.
-
-    var transparentImages = {};
-
-    var imageCounter = 0;
-    images.forEach(function(image){
-    	if(image.src.indexOf('Medium') + 1){
-    		for(let transparency = 0.99; transparency >= 0; transparency = (transparency - 0.01).toFixed(2)){
-    			(function(transparency){//Wrapped in function so that each newImage has it's own context.
-	    			let newImage = changeImageTransparency(image, transparency);
-	    			let name = image.src.split('/')[4].split('.')[0] + 'Transparency' + transparency;
-
-	    			newImage.onload = function(){
-	    				transparentImages[name] = newImage;
-
-	    				imageCounter = imageCounter + 1;
-	    				if(imageCounter === 300)animationLoop();
-	    			}
-    			})(transparency);
-    		}
-    	}
-    });
-
+	ctx.fillRect(0, 0, canvas.width, canvas.height);//and uses the default background to fill up the entire screen
+	ctx.fillStyle = 'gray';//And then some gray text,
+	ctx.fillText('Loading', canvas.width/2 - ctx.measureText('Loading').width/2, canvas.height/2);//that says loading.
 
     function player(){
     	//Movement stuff upcoming.
@@ -501,8 +502,8 @@ function startAdventure(username){
 		this.swings = [];//This records all of the player's swings.
 
 		this.trailCoords = (function(){//This records all of the coordinates for his fancy tail.
-    		var trailCoords = [];
-    		for(var i = 0; i < 15; i++)trailCoords.push([0, 0]);
+    		let trailCoords = [];
+    		for(let i = 0; i < 15; i++)trailCoords.push([0, 0]);
     		return trailCoords;
     	})();
 
@@ -518,7 +519,7 @@ function startAdventure(username){
     	//Health and armor values
     	this.health = 100;
     	this.maxHealth = this.health;
-    	this.armor = this.health/4;
+    	this.armor = 0;
     	this.maxArmor = this.maxHealth;
 
     	this.keyMaps = {};//This stores all of the user input logic.
@@ -533,7 +534,7 @@ function startAdventure(username){
     	this.damage = function(amount, dealtBy){
     		if(this.health <= 0)return;//Because there's no use in killing that which is already dead.
 
-    		this.health = this.health - amount;//Knock off however much health needs to be knocked off.
+    		this.health = this.health - ((amount - this.armor > 0) ? amount - this.armor : 0);//Knock off however much health needs to be knocked off.
 
     		if(this.health <= 0){
     			this.kill(dealtBy);//Boom! Ya ded!
@@ -565,7 +566,7 @@ function startAdventure(username){
     	}
 
     	this.getAttacked = function(attacker, attackStats){
-    		var weapon = attacker.latestWeapon;
+    		let weapon = attacker.latestWeapon;
     		weapon.onHit(this, attacker, attackStats);
     	}
 
@@ -587,7 +588,7 @@ function startAdventure(username){
 
 			this.move(this.speed.x, this.speed.y);//scoot over a bit
 
-	        for(var keyMap in this.keyMaps)if(pressedKeys[keyMap]){//Loop through the record of pressed keys.
+	        for(let keyMap in this.keyMaps)if(pressedKeys[keyMap]){//Loop through the record of pressed keys.
 	        	if($('#chatInput').is(':focus') && keyMap.length <= 1 && /^[a-z0-9]+$/i.test(keyMap))continue;//If the key in question is an alphanumeric key and the chat is being used, don't bother.
 	        	this.keyMaps[keyMap]();//Do whatever it is that this key is supposed to do.
 	        };
@@ -615,8 +616,8 @@ function startAdventure(username){
 	    		ctx.lineWidth = this.trailCoords.length - index;//Set width of this section to the opposite of the section's index.
 	    		ctx.beginPath();//Begin drawing
 
-	    		var lastCoordsX = (this.trailCoords[index-1]) ? this.trailCoords[index-1][0] : this.x;//Set coordinates for the last part of the trail, if there aren't any, use the current coordinates.
-	    		var lastCoordsY = (this.trailCoords[index-1]) ? this.trailCoords[index-1][1] : this.y;//Set coordinates for the last part of the trail, if there aren't any, use the current coordinates.
+	    		let lastCoordsX = (this.trailCoords[index-1]) ? this.trailCoords[index-1][0] : this.x;//Set coordinates for the last part of the trail, if there aren't any, use the current coordinates.
+	    		let lastCoordsY = (this.trailCoords[index-1]) ? this.trailCoords[index-1][1] : this.y;//Set coordinates for the last part of the trail, if there aren't any, use the current coordinates.
 
 	    		ctx.moveTo(lastCoordsX, lastCoordsY);//Go to where the trail was last
 	    		ctx.lineTo(element[0], element[1]);//Draw over to where it should be next
@@ -627,7 +628,7 @@ function startAdventure(username){
 	    	ctx.lineWidth = 1;//Set line width back to normal
 
 	    	//Now we draw the actual player.
-	    	var gradient = ctx.createRadialGradient(this.x, this.y, 16, this.x, this.y, 0);//Set his gradient,
+	    	let gradient = ctx.createRadialGradient(this.x, this.y, 16, this.x, this.y, 0);//Set his gradient,
 	    	gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');//Make him clear in the middle
 	    	gradient.addColorStop(1, 'rgba(255, 0, 0, ' + this.intensity + ')');//use his intensity towards the edges
 
@@ -639,7 +640,7 @@ function startAdventure(username){
 	    	ctx.fill();//Fill him in and finish drawing.
 
 
-	    	var armorGradient = ctx.createRadialGradient(this.x, this.y, 16, this.x, this.y, 0);
+	    	let armorGradient = ctx.createRadialGradient(this.x, this.y, 16, this.x, this.y, 0);
 	    	armorGradient.addColorStop(0, 'rgba(100, 100, 100, 0)');
 	    	armorGradient.addColorStop(0.2, 'rgba(100, 100, 100, ' + (this.armor/this.maxArmor)*0.85 + ')');
 	    	armorGradient.addColorStop(1, 'rgba(100, 100, 100, 0)');
@@ -653,26 +654,15 @@ function startAdventure(username){
 	    }
 
 	    this.drawUI = function(){
-	    	for(var attacker in this.attacks){
+	    	for(let attacker in this.attacks){
 	    		let attack = this.attacks[attacker];
-
-	    		if(attack.isDying){
-		    		console.log('Here!');
-		    		delete this.attacks[attacker];
-		    		continue;
-		    	}
-
-	    		if(localPlayer.discreteMode)break;
-
+	    		if(!attack.isDying && localPlayer.discreteMode)break;
+	    		
 	    		let weapon = itemList[this.attacks[attacker].weapon];
-
 	    		let progressDecimal = (1 - -1*(Date.now() - attack.attackExpires)/10000).toFixed(2);
 	    		progressDecimal = (progressDecimal > 0.30) ? progressDecimal : '0.30';
 
-		    	let image = transparentImages[weapon.type + 'MediumTransparency' + progressDecimal];
-
-		    	//backup
-		    	if(!image)image = (function(){
+	    		if(!attack.image)attack.image = (function(){
 		    		let finalImage;
 	    			images.forEach(function(img){
 		    			let type = img.src.split('/')[4].split('Medium')[0];
@@ -684,8 +674,35 @@ function startAdventure(username){
 	    			});
 	    			return finalImage;
 	    		})();
+
+	    		if(attack.isDying){
+		    		if(!attack.chunks){
+		    			let maxCount = 15;
+		    			attack.chunks = [];
+		    			attack.iterationsLeft = 17;
+
+		    			for(let i = 0; i < maxCount; i++){
+		    				attack.chunks.push({
+		    					image:getImageChunk(attack.image),
+		    					angle:Math.PI*2*i/maxCount,
+		    				});
+		    			}
+		    		}
+
+		    		attack.chunks.forEach(function(chunk, index){
+		    			let x = (this.x + Math.cos(chunk.angle)*(40-attack.iterationsLeft*2)) - chunk.image.width/2;
+		    			let y = (this.y + Math.sin(chunk.angle)*(40-attack.iterationsLeft*2)) - chunk.image.height/2;
+		    			ctx.drawImage(chunk.image, x, y);
+		    		}.bind(this));
+		    		attack.iterationsLeft = attack.iterationsLeft - 1;
+
+		    		if(attack.iterationsLeft < 0)delete this.attacks[attacker];
+		    		continue;
+		    	}
+
+	    		if(localPlayer.discreteMode)break;
 		    	
-		    	ctx.drawImage(image, this.x - image.width/2, this.y - image.height/2);
+		    	ctx.drawImage(changeImageTransparency(attack.image, progressDecimal), this.x - attack.image.width/2, this.y - attack.image.height/2);
 	    	}
 	    }
 
@@ -735,7 +752,7 @@ function startAdventure(username){
 
     	this.drawSwings = function(){
     		this.swings.forEach(function(swing){
-	    		var gradient = ctx.createRadialGradient(swing.x, swing.y, swing.radius, swing.x, swing.y, 0);
+	    		let gradient = ctx.createRadialGradient(swing.x, swing.y, swing.radius, swing.x, swing.y, 0);
 	    		//Add pulsing bit here
 	    		gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
 	    		gradient.addColorStop(0.1, 'rgba(255, 0, 0, ' + swing.intensity + ')');
@@ -767,6 +784,7 @@ function startAdventure(username){
 		this.update = function(){//Just packages 
 			this.calculate();//   calculate
 			this.draw();//        and draw together.
+			this.drawUI();
 		}
     }
 
@@ -859,21 +877,21 @@ function startAdventure(username){
 	callOnResize.push(localPlayer.centerCamera);//Put this in callOnResize, because we only need this to happen in the center of the screen moves
 
 	localPlayer.drawUI = function(){
-    	var counter = 0;
+    	let counter = 0;
     	for(attacker in this.attacks){//Let's draw the attack count down bar.
 
     		counter = counter + 1;
-    		var attack = this.attacks[attacker];
+    		let attack = this.attacks[attacker];
 
     		if(attack.isDying){
     			delete this.attacks[attacker];
     			continue;
     		}
 
-    		var height = (canvas.height*0.85)*((Date.now() - attack.attackExpires)/10000);
-    		var width = 25;
-    		var x = ctx.x + canvas.width - 75*counter;
-    		var y = ctx.y + canvas.height - 100;
+    		let height = (canvas.height*0.85)*((Date.now() - attack.attackExpires)/10000);
+    		let width = 25;
+    		let x = ctx.x + canvas.width - 75*counter;
+    		let y = ctx.y + canvas.height - 100;
 
     		function drawIt(){
     			ctx.beginPath();
@@ -884,15 +902,15 @@ function startAdventure(username){
     			ctx.fill();
     		}
 
-    		var otherColors = -1*Math.round(255*((Date.now() - attack.attackExpires)/10000));
+    		let otherColors = -1*Math.round(255*((Date.now() - attack.attackExpires)/10000));
 
-    		var horizontalGrad = ctx.createLinearGradient(x, y, x+width, y);
+    		let horizontalGrad = ctx.createLinearGradient(x, y, x+width, y);
     		horizontalGrad.addColorStop(0,   'rgba(255, ' + otherColors + ', ' + otherColors + ', 0)');
     		horizontalGrad.addColorStop(0.4, 'rgba(255, ' + otherColors + ', ' + otherColors + ', 0.2)');
     		horizontalGrad.addColorStop(0.6, 'rgba(255, ' + otherColors + ', ' + otherColors + ', 0.2)');
     		horizontalGrad.addColorStop(1,   'rgba(255, ' + otherColors + ', ' + otherColors + ', 0)');
 
-    		var verticalGrad = ctx.createLinearGradient(x, y, x, y+height);
+    		let verticalGrad = ctx.createLinearGradient(x, y, x, y+height);
     		verticalGrad.addColorStop(0,     'rgba(255, ' + otherColors + ', ' + otherColors + ', 0.2)');
     		verticalGrad.addColorStop(1,     'rgba(255, ' + otherColors + ', ' + otherColors + ', 0.1)');
 
@@ -906,12 +924,12 @@ function startAdventure(username){
     		ctx.fillStyle = 'gray';
 
     		ctx.font = '12px Roboto';
-    		var heading = 'Attacked By:';
-    		var headingWidth = ctx.measureText(heading).width;
+    		let heading = 'Attacked By:';
+    		let headingWidth = ctx.measureText(heading).width;
     		ctx.fillText(heading, x + width/2 - headingWidth/2, y + 15);
 
     		ctx.font = '15px Roboto';
-    		var attackerWidth = ctx.measureText(attacker).width;
+    		let attackerWidth = ctx.measureText(attacker).width;
     		ctx.fillText(attacker, x + width/2 - attackerWidth/2, y + 30);
     	};
     }
@@ -951,20 +969,20 @@ function startAdventure(username){
     	this.oldCalcSwings();//But really just add onto it because we're still calling the old version.
 
     	//Here we'll loop through all of the swings to see if the player's being hit.
-    	for(var playerIndex in otherPlayers){//We'll loop through all of the players,
+    	for(let playerIndex in otherPlayers){//We'll loop through all of the players,
 
     		if(localPlayer.health <= 0)break;//No use checking if we're dead.
 
-    		var player = otherPlayers[playerIndex];//Cache each player for ease of access and efficiency
+    		let player = otherPlayers[playerIndex];//Cache each player for ease of access and efficiency
 
     		player.swings.forEach(function(swing){//Loop through each player's swings
-    			var swingTip = {//Coordinates for the tip of the swing.
+    			let swingTip = {//Coordinates for the tip of the swing.
     				x:player.x + swing.radius * Math.cos(swing.rotation), //Uses cos to extrapolate the tip based on the swing's rotation
     				y:player.y + swing.radius * Math.sin(swing.rotation) //Uses sin to do the same.
     			}
 
     			if(swingTip.x > this.x - 16 && swingTip.x < this.x + 16 && swingTip.y > this.y - 16 && swingTip.y < this.y + 16){//If we're getting poked by the tip of the swing.
-    				var attackStats = {};
+    				let attackStats = {};
     				attackStats.rotation = swing.rotation;
     				attackStats.startedAt = Date.now();
     				socket.emit('requestAttack', player.username, attackStats);
@@ -985,7 +1003,7 @@ function startAdventure(username){
     localPlayer.oldKill = localPlayer.kill;//Cache
     localPlayer.kill = function(dealtBy){//Overwrite
     	localPlayer.oldKill();//call cached, so we're just adding on
-    	var keyMapsCache = this.keyMaps;
+    	let keyMapsCache = this.keyMaps;
 
     	this.keyMaps = {};
 
@@ -1000,6 +1018,131 @@ function startAdventure(username){
     		this.damage(0, dealtBy);
     	}, 10000);
     }
+    //End of code for localPlayer
+
+
+
+    //Environment code
+
+    var environment = [];
+
+    var updateEnvironment = function(){
+    	environment.forEach(function(mapItem){
+    		mapItem.calculate();
+    		mapItem.draw();
+    	});
+    }
+
+    var mapItems = {
+    	'teleporter':function(){
+    		this.name = 'teleporter';
+    		this.toolTip = "Woah, it's swirly! It appears to bring forth refuse from another dimension. Wait a second... didn't I come out of there?";
+
+    		this.onSpawn = function(){
+    			this.radius = 300;
+    			this.angle = 0;
+    			this.colors = [[1, 23, 58], [1, 30, 76]];
+
+    			let spawnAngle = Math.random()*(Math.PI*2);
+    			localPlayer.speed.x = Math.cos(spawnAngle) * (this.radius*0.045);
+    			localPlayer.speed.y = Math.sin(spawnAngle) * (this.radius*0.045);
+
+    			this.swirls = (function(){
+    				let swirls = [];
+    				for(let i = 0; i < 100; i++){
+    					swirls.push({
+    						angle:Math.random()*(Math.PI*2),
+    						coords:(function(){
+    							let array = [];
+    							let howMany = Math.round(Math.random()*5) + 2;
+    							for(let i = 0; i < howMany; i++){
+    								array.push([0, 0]);
+    							}
+    							return array;
+    						})(),
+    						distance:Math.round(Math.random()*(this.radius*3)) + this.radius,
+    						turnRate:(Math.random()/15).toFixed(3)*1
+    					});
+    				}
+    				return swirls;
+    			}.bind(this))();
+    			
+    		};
+    		this.calculate = function(){
+    			this.swirls.forEach(function(swirl){
+    				swirl.angle = (swirl.angle + swirl.turnRate) % (Math.PI * 2);
+    				let newCoordsX = Math.cos(swirl.angle) * swirl.distance;
+    				let newCoordsY = Math.sin(swirl.angle) * swirl.distance;
+    				swirl.coords.pop();
+    				swirl.coords.unshift([newCoordsX, newCoordsY]);
+    			}.bind(this));
+
+    			this.angle = (this.angle + 0.025) % (Math.PI * 2);
+
+    			if(Math.abs(localPlayer.x) < this.radius*3.2 && Math.abs(localPlayer.y) < this.radius*3.2){
+    				let distanceFromCenter = Math.sqrt(localPlayer.x*localPlayer.x + localPlayer.y*localPlayer.y);
+    				let angle = Math.atan2(localPlayer.y, localPlayer.x) + this.angle;
+    				localPlayer.move(Math.cos(angle) * (this.radius*3.2/75 - distanceFromCenter/75), Math.sin(angle) * (this.radius*3.2/75 - distanceFromCenter/75));
+    			}
+    		};
+    		this.draw = function(){
+
+    			let orbGrad = ctx.createRadialGradient(this.x, this.y, this.radius*4, this.x, this.y, 0);
+    			let colorsInside =  'rgba(' + this.colors[0][0] + ', ' + this.colors[0][1] + ', ' + this.colors[0][2] + ', ';
+    			let colorsOutside = 'rgba(' + this.colors[1][0] + ', ' + this.colors[1][1] + ', ' + this.colors[1][2] + ', ';
+    			orbGrad.addColorStop(1,   colorsInside + '1)');
+    			orbGrad.addColorStop(0.5, colorsOutside + '1)');
+    			orbGrad.addColorStop(0,   colorsOutside + '0)');
+
+    			ctx.fillStyle = orbGrad;
+
+    			ctx.beginPath();
+    			ctx.arc(this.x, this.y, this.radius*4, 0, Math.PI*2);
+    			ctx.fill();
+
+    			ctx.strokeStyle = colorsInside + '0.35)';
+    			this.swirls.forEach(function(swirl){
+    				var lastPath = swirl.coords[0];
+    				ctx.beginPath();
+    				swirl.coords.forEach(function(coordSet, index){
+    					
+    					ctx.lineWidth = Math.ceil(7);
+    					
+    					ctx.moveTo(lastPath[0], lastPath[1]);
+    					ctx.lineTo(coordSet[0], coordSet[1]);
+
+    					lastPath = coordSet;
+    				}.bind(this));
+    				ctx.stroke();
+    			}.bind(this));
+
+    		};
+    	},
+    	'trash can':function(){
+    		this.toolTip = "One man's cliche is another trashcans's tooltip.";
+    		this.imageSrc = '';
+
+    		this.calculate = function(){
+
+    		};
+    		this.draw = function(){
+    		
+    		};
+    		this.onClick = function(){
+
+    		};
+    	}
+    }
+
+    function mapItem(type){
+    	mapItems[type].call(this);
+    	this.x = 0;
+    	this.y = 0;
+
+    	if(this.onSpawn)this.onSpawn();
+    }
+
+    //End of environment code
 
 
     
@@ -1051,6 +1194,41 @@ function startAdventure(username){
 
 	socket.emit('join');//Tell the server that we've entered a username and are now trying to play the game.
 
+
+	//Map stuff
+	socket.on('getMap', function(map){
+		var mapComplete = [];
+		map.forEach(function(element){
+			var elementCache = element;
+			element = new mapItem(element.type);
+
+			for(let attribute in elementCache){
+				element[attribute] = elementCache[attribute];
+			}
+			mapComplete.push(element);
+		});
+		environment = mapComplete;
+	});
+
+	socket.on('insertMapElement', function(element, index){
+		environment.splice(index, 0, element);
+	});
+
+	socket.on('removeMapElement', function(index){
+		environment.splice(index, 1);
+	});
+
+	socket.on('changeMapElement', function(index, attributeToChange, value){
+		environment[index][attributeToChange] = value;
+	});
+
+	socket.on('callMapElementFunction', function(index, func, params){
+		environment[index][func](...params);
+	});
+
+	//End of map stuff
+
+
 	socket.on('newPlayer', function(username){//If it tells us about someone who's in the game,
 		otherPlayers[username] = new player();//Make a new slot for them in a local object.
 		otherPlayers[username].username = username;//And give that local object their username.
@@ -1065,6 +1243,11 @@ function startAdventure(username){
 		otherPlayers[username].x = movement.x;//And then we just record the new info.
 		otherPlayers[username].y = movement.y;//And then we just record the new info.
 		otherPlayers[username].speed = movement.speed;//And then we just record the new info.
+	});
+
+	socket.on('statUpdate', function(username, stat, value){
+		if(!otherPlayers[username])return;
+		otherPlayers[username][stat] = value;
 	});
 
 	socket.on('swingUpdate', function(username, x, y, rotation){//Looks like someone's sent us some info about a swing they've swung.
@@ -1126,12 +1309,16 @@ function startAdventure(username){
     		img:'imgs/rockBig.png',
     		weakness:'paper',
     		damageHP:30,
-    		damageArmor:0,
+    		damageArmor:10,
     		accuracy:10,
     		deflectionPercentage:70, //amount of damage negated by armor
     		behavior:'basic',
     		onSuccessfulAttack:function(looser, winner, attackStats){
-    			looser.damage(this.damageHP + (Math.round(Math.random()*this.accuracy) - this.accuracy), winner.username);
+    			if(looser == localPlayer){
+	    			looser.armor = looser.armor - this.damageArmor + (Math.round(Math.random()*this.accuracy) - this.accuracy);
+	    			looser.armor = (looser.armor < 0) ? 0 : looser.armor;
+	    			looser.damage(this.damageHP + (Math.round(Math.random()*this.accuracy) - this.accuracy), winner.username);
+	    		}
     		}
     	},
     	'paper':{
@@ -1142,7 +1329,10 @@ function startAdventure(username){
     		armorBoost:15,
     		behavior:'basic',
     		onSuccessfulAttack:function(looser, winner, attackStats){
-    			winner.armor = (winner.armor + this.armorBoost > winner.maxArmor) ? winner.maxArmor : winner.armor + this.armorBoost;
+    			if(winner == localPlayer){
+	    			winner.armor = (winner.armor + this.armorBoost > winner.maxArmor) ? winner.maxArmor : winner.armor + this.armorBoost;
+	    			socket.emit('statUpdate', 'armor', winner.armor);
+    			}
     		}
     	},
     	'scissors':{
@@ -1150,14 +1340,17 @@ function startAdventure(username){
     		type:'scissors',
     		img:'imgs/scissorsBig.png',
     		weakness:'rock',
-    		damageHP:0,
+    		damageHP:10,
     		damageArmor:30,
     		accuracy:5,
     		deflectionPercentage:0, //Amount of damage negated by armor
     		behavior:'basic',
     		onSuccessfulAttack:function(looser, winner, attackStats){
-    			looser.armor = looser.armor - this.damageArmor + (Math.round(Math.random()*this.accuracy) - this.accuracy);
-    			looser.armor = (looser.armor < 0) ? 0 : looser.armor;
+    			if(looser == localPlayer){
+	    			looser.armor = looser.armor - this.damageArmor + (Math.round(Math.random()*this.accuracy) - this.accuracy);
+	    			looser.armor = (looser.armor < 0) ? 0 : looser.armor;
+	    			looser.damage(this.damageHP + (Math.round(Math.random()*this.accuracy) - this.accuracy), winner.username);
+	    		}
     		}
 		}
     }
@@ -1223,25 +1416,24 @@ function startAdventure(username){
 		}
     };
 
-    for(var itemName in itemList){
-    	var item = itemList[itemName];
+    for(let itemName in itemList){
+    	let item = itemList[itemName];
     	item.onHit = itemBehaviors[item.behavior]
     }
     localPlayer.currentWeapon = itemList['rock'];
 
 
     var getUI = function(){
-    	var counter = 0;
+    	let counter = 0;
 
-		function check(elementName){
-			var element = itemList[elementName];
+	    for(let elementName in itemList){
+	    	let element = itemList[elementName];
 			element.index = counter;
 
 			$('#' + elementName).remove();
 
 			$('body').append('<div id = ' + elementName + ' class = hotBarBox style=left:' + (canvas.width*0.8 - Object.keys(itemList).length*40 + element.index*80) + 'px; > <img src = ' + element.img + '> </div>');
-			var elmtDiv = $('#' + elementName);
-
+			let elmtDiv = $('#' + elementName);
 			if(elementName == localPlayer.currentWeapon.name && !localPlayer.discreteMode){
 				elmtDiv.css('border-color', 'rgba(255, 0, 0, 0.115)');
 				elmtDiv.css('background-color', 'rgba(255, 0, 0, 0.1)');
@@ -1256,19 +1448,13 @@ function startAdventure(username){
 				elmtDiv.append('<h2>' + (element.index + 1) + '</h2>');
 				setTimeout(refresh, 500);
 			});
-
 			elmtDiv.on('click', function(){
 				localPlayer.currentWeapon = element;
 				getUI();
 			});
-
 			elmtDiv.on('mouseleave', refresh);
 
 			counter = counter + 1;
-		}
-
-	    for(var elementName in itemList){
-	    	check(elementName);
 		}
 	}
 	getUI();
@@ -1299,7 +1485,7 @@ function startAdventure(username){
 
         ctx.strokeStyle = gridGrad;//Then we'll draw the grid
         //horizontal lines
-        for(var y = ctx.y - (localPlayer.y % 32); y < ctx.y + canvas.height; y = y + 32){
+        for(let y = ctx.y - (localPlayer.y % 32); y < ctx.y + canvas.height; y = y + 32){
         	//The modulus part makes it look like the grid follows the player. The rest just draws a line each 32 pixels.
     		ctx.beginPath();//Begin path
     		ctx.moveTo(ctx.x, y);//Start on the left
@@ -1309,7 +1495,7 @@ function startAdventure(username){
         }
 
         //vertical lines
-        for(var x = ctx.x - (localPlayer.x % 32); x < ctx.x + canvas.width; x = x + 32){
+        for(let x = ctx.x - (localPlayer.x % 32); x < ctx.x + canvas.width; x = x + 32){
         	//The modulus part makes it look like the grid follows the player. The rest just draws a line each 32 pixels.
     		ctx.beginPath();//Start drawing
     		ctx.moveTo(x, ctx.y);//Go over to the top
@@ -1336,7 +1522,7 @@ function startAdventure(username){
 
 	$(document).on('keydown keyup', onkeydown);//Call that handy lil' function we defined a few lines up.
 	$(document).on('mousedown mouseup', function(event){
-		var buttonNameArray = ['left-button', 'middle-button', 'right-button'];
+		let buttonNameArray = ['left-button', 'middle-button', 'right-button'];
 		//This records all of the names of buttons that we can tell are being pressed, the index aligns with the number each button is assigned via event.button
 		pressedKeys[buttonNameArray[event.button]] = event.type == 'mousedown';
 		//That way, we can record the state of the button under it's name, instead of just some vague number.
@@ -1362,17 +1548,19 @@ function startAdventure(username){
         if(isPaused)return;//Stop if the game is paused.
         
         drawBackground();//This draws the background
+
+        updateEnvironment();//This draws the map elements
+
         localPlayer.update();//We update the local player first,
 
         for(var playerIndex in otherPlayers){//And then we loop through the record of everyone he's player with,
         	otherPlayers[playerIndex].update();//and update each of them.
-        	otherPlayers[playerIndex].drawUI();
         }
-        
-        localPlayer.drawUI();
 
         requestAnimationFrame(animationLoop);//And then it calls itself again.
     }
+
+    animationLoop();
 }
 
 //End of Universal Functions

@@ -11,6 +11,11 @@ app.get('/', function(req, res,next){
 });
 
 var players = [];
+var environment = [{
+	type:'teleporter',
+	x:0,
+	y:0
+}];
 
 io.on('connection', function(client) {  
 
@@ -45,6 +50,8 @@ io.on('connection', function(client) {
         client.broadcast.emit('chatMessage', 'Server', this.username + " has joined the game.");
         //Then tell all clients to make a new slot for him.
         client.broadcast.emit('newPlayer', this.username);
+
+        client.emit('getMap', environment);
 	});
 
 
@@ -71,6 +78,10 @@ io.on('connection', function(client) {
 
 	client.on('requestAttack', function(attacker, attackStats){
 		client.broadcast.emit('requestAttack', this.username, attacker, attackStats);
+	});
+
+	client.on('statUpdate', function(stat, value){
+		client.broadcast.emit('statUpdate', this.username, stat, value);
 	});
 
 
