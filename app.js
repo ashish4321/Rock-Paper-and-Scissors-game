@@ -17,6 +17,26 @@ var environment = [{
 	y:0
 }];
 
+var trashCounter = 0;
+function addTrash(){
+	if(trashCounter < 10){
+		trashCounter = trashCounter + 1;
+
+		let element = {
+			type:'trash',
+			maxDistance:Math.round(Math.random()*(500)) + 1200,
+			angle:Math.random()*(Math.PI*2),
+			inventory:[]
+		}
+		environment.push(element);
+
+		io.emit('insertMapElement', element, environment.length - 1);
+	}
+
+	setTimeout(addTrash, 10000);
+}
+addTrash();
+
 io.on('connection', function(client) {  
 
 

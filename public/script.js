@@ -31,6 +31,10 @@ function chooseFrom(anArray){ //This function chooses something from an array.
   return anArray[Math.floor(Math.random() * anArray.length)];
 }
 
+String.prototype.capitalize = function(){
+	return this.replace(/\b\w/g, l => l.toUpperCase())
+}
+
 function adjustScreen(){
 
 	canvas.width  = $(window).width();//Get the screen's width to fill all available space.
@@ -479,10 +483,34 @@ function startAdventure(username){
 
     var maxDistance = 1850;
 
-	ctx.fillStyle = backgroundGradient;//And then we'll give them a loading screen that uses the default background.
-	ctx.fillRect(0, 0, canvas.width, canvas.height);//and uses the default background to fill up the entire screen
-	ctx.fillStyle = 'gray';//And then some gray text,
-	ctx.fillText('Loading', canvas.width/2 - ctx.measureText('Loading').width/2, canvas.height/2);//that says loading.
+    var drawLoadingScreen = function(){
+		ctx.fillStyle = backgroundGradient;//And then we'll give them a loading screen that uses the default background.
+		ctx.fillRect(0, 0, canvas.width, canvas.height);//and uses the default background to fill up the entire screen
+		ctx.fillStyle = 'gray';//And then some gray text,
+		ctx.fillText('Loading', canvas.width/2 - ctx.measureText('Loading').width/2, canvas.height/2);//that says loading.
+	}
+
+	callOnResize.push(drawLoadingScreen);
+
+	var newImages = {};
+	const newSources = [
+		'debris'
+	];
+	var loadCounter = 0;
+
+	newSources.forEach(function(source){
+		let newImage = new Image();
+		newImage.onload = function(){
+			loadCounter = loadCounter + 1;
+			newImages[source] = newImage;
+
+			if(loadCounter >= newSources.length){
+				callOnResize.splice(callOnResize.indexOf(drawLoadingScreen), 1);
+				animationLoop();
+			}
+		}
+		newImage.src = 'imgs/' + source + '.png';
+	});
 
     function player(){
     	//Movement stuff upcoming.
@@ -704,6 +732,15 @@ function startAdventure(username){
 		    	
 		    	ctx.drawImage(changeImageTransparency(attack.image, progressDecimal), this.x - attack.image.width/2, this.y - attack.image.height/2);
 	    	}
+
+	    	ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+	    	ctx.fillRect(this.x - 32*(this.health/this.maxHealth)/2, this.y + 13, 32*(this.health/this.maxHealth), 3);
+	    	ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+	    	ctx.fillRect(this.x - 32*(this.armor/this.maxArmor)/2,   this.y + 16, 32*(this.armor/this.maxArmor), 3);
+
+	    	ctx.font = '11px Roboto';
+	    	let nameWidth = ctx.measureText(this.username).width;
+	    	ctx.fillText(this.username, this.x - nameWidth/2, this.y - 14);
 	    }
 
 	    this.getSwing = function(targetX, targetY, rotation){
@@ -932,6 +969,12 @@ function startAdventure(username){
     		let attackerWidth = ctx.measureText(attacker).width;
     		ctx.fillText(attacker, x + width/2 - attackerWidth/2, y + 30);
     	};
+
+    	ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+    	ctx.fillRect(ctx.x + 10, ctx.y + canvas.height - 200, 295 * (this.health/this.maxHealth), 10);
+
+    	ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+    	ctx.fillRect(ctx.x + 10, ctx.y + canvas.height - 185, 295 * (this.armor/this.maxArmor), 10);
     }
 
 	localPlayer.move = function(x, y){//Here we overwrite the move function so that the screen moves with the localPlayer.
@@ -1018,6 +1061,63 @@ function startAdventure(username){
     		this.damage(0, dealtBy);
     	}, 10000);
     }
+
+    //giveStuff variable declaration
+    localPlayer.giveStuffPromptsOut = 0;
+
+    localPlayer.giveStuff = function(giverName, inventory, callBack){
+    	this.giveStuffPromptsOut = this.giveStuffPromptsOut + 1;
+    	
+    	$('body').append('<div class = itemsPromptBox id = giveStuffPrompt' + this.giveStuffPromptsOut + '></div>');
+    	let outer = $('#giveStuffPrompt' + this.giveStuffPromptsOut);
+    	outer.append('<h3>' + giverName + '</h3>');
+    	if(this.giveStuffPromptLastKnownCoords){
+	    	outer.css('left', this.giveStuffPromptLastKnownCoords.x);
+			outer.css('top', this.giveStuffPromptLastKnownCoords.y);
+		}
+
+    	let startCoords;
+    	outer.on('mousedown', function(event){
+    		startCoords = {
+    			mouseX:event.pageX,
+    			mouseY:event.pageY,
+    			elementX:outer.position().left,
+    			elementY:outer.position().top
+    		}
+    		outer.on('mousemove', function(event){
+	    		outer.css('left', startCoords.elementX + (event.pageX - startCoords.mouseX));
+	    		outer.css('top', startCoords.elementY + (event.pageY - startCoords.mouseY));
+
+	    		event.stopPropagation();
+    		}.bind(this));
+    		return false;
+    	});
+    	outer.on('mouseup', function(){
+    		outer.off('mousemove');
+    		if(startCoords){
+	    		this.giveStuffPromptLastKnownCoords = {
+	    			x:startCoords.elementX + (event.pageX - startCoords.mouseX),
+	    			y:startCoords.elementY + (event.pageY - startCoords.mouseY)
+	    		}
+    		}
+    	}.bind(this));
+    	
+    	outer.append('<div class = x id = giveStuffX' + this.giveStuffPromptsOut + ' >x</div>');
+    	let x = $('#giveStuffX' + this.giveStuffPromptsOut);
+    	x.on('click', function(event){
+    		outer.remove();
+    		this.giveStuffPromptsOut = this.giveStuffPromptsOut - 1;
+    		if(callBack)callBack();
+    	});
+
+    	outer.append('<div class = inner id = giveStuffInnerPrompt' + this.giveStuffPromptsOut + '></div>');
+    	let inner = $('#giveStuffInnerPrompt' + this.giveStuffPromptsOut);
+    	inner.on('mousedown', function(event){
+    		event.stopPropagation();
+    	});
+
+    	outer.append('<div class = scroll></div>');
+    }
     //End of code for localPlayer
 
 
@@ -1036,12 +1136,18 @@ function startAdventure(username){
     var mapItems = {
     	'teleporter':function(){
     		this.name = 'teleporter';
-    		this.toolTip = "Woah, it's swirly! It appears to bring forth refuse from another dimension. Wait a second... didn't I come out of there?";
+    		this.toolTip = "Woah, it's swirly! <br> It appears to bring forth refuse from another dimension... <br> Wait a minute! <br> Didn't I come out of there?";
 
     		this.onSpawn = function(){
     			this.radius = 300;
-    			this.angle = 0;
+    			this.angle = Math.random()*(Math.PI*2);
     			this.colors = [[1, 23, 58], [1, 30, 76]];
+    			this.rect = {
+    				x:this.radius*-2,
+    				y:this.radius*-2,
+    				width:this.radius*4,
+    				height:this.radius*4
+    			}
 
     			let spawnAngle = Math.random()*(Math.PI*2);
     			localPlayer.speed.x = Math.cos(spawnAngle) * (this.radius*0.045);
@@ -1069,6 +1175,8 @@ function startAdventure(username){
     			
     		};
     		this.calculate = function(){
+    			this.mouseCalculate();
+
     			this.swirls.forEach(function(swirl){
     				swirl.angle = (swirl.angle + swirl.turnRate) % (Math.PI * 2);
     				let newCoordsX = Math.cos(swirl.angle) * swirl.distance;
@@ -1077,12 +1185,18 @@ function startAdventure(username){
     				swirl.coords.unshift([newCoordsX, newCoordsY]);
     			}.bind(this));
 
-    			this.angle = (this.angle + 0.025) % (Math.PI * 2);
+    			this.angle = (this.angle + 0.001) % (Math.PI * 2);
 
     			if(Math.abs(localPlayer.x) < this.radius*3.2 && Math.abs(localPlayer.y) < this.radius*3.2){
     				let distanceFromCenter = Math.sqrt(localPlayer.x*localPlayer.x + localPlayer.y*localPlayer.y);
-    				let angle = Math.atan2(localPlayer.y, localPlayer.x) + this.angle;
-    				localPlayer.move(Math.cos(angle) * (this.radius*3.2/75 - distanceFromCenter/75), Math.sin(angle) * (this.radius*3.2/75 - distanceFromCenter/75));
+    				let angle = Math.atan2(localPlayer.y, localPlayer.x);
+    				
+    				localPlayer.speed.x = localPlayer.speed.x + Math.cos(angle) * (this.radius*3.2/500 - distanceFromCenter/500);
+    				localPlayer.speed.x = (localPlayer.speed.x > 10) ? 10 : (localPlayer.speed.x < -10) ? -10 : localPlayer.speed.x;
+    				
+    				localPlayer.speed.y = localPlayer.speed.y + Math.sin(angle) * (this.radius*3.2/500 - distanceFromCenter/500);
+    				localPlayer.speed.y = (localPlayer.speed.y > 10) ? 10 : (localPlayer.speed.y < -10) ? -10 : localPlayer.speed.y;
+    				
     			}
     		};
     		this.draw = function(){
@@ -1118,29 +1232,189 @@ function startAdventure(username){
 
     		};
     	},
-    	'trash can':function(){
-    		this.toolTip = "One man's cliche is another trashcans's tooltip.";
-    		this.imageSrc = '';
 
+
+    	'trash':function(){
+    		this.name = 'trash';
+    		this.toolTip = chooseFrom(["Smells... Interesting...", "One man's cliche is another pile of trash's tooltip.", "I suppose I'd best sift through this, it's not as if I have anything better to do.", "Trashy.", "Soggy cardboard... Yum.", "What do you mean you wish the tooltips were actually helpful? They have character!", "The tooltips that describe this item are much like that which they describe, in that their great quantity and shocking lack of quality make them appealing to only the most desperate of folk."]);
+
+    		this.onSpawn = function(){
+    			this.distance = 0;
+    			this.coords = (function(){
+    				var coords = [];
+    				for(var i = 0; i < 50; i++){
+    					coords.push([0, 0]);
+    				}
+    				return coords;
+    			})();
+    		}
     		this.calculate = function(){
+    			let speed = Math.max(0.5, 10 * ((this.maxDistance - this.distance)/this.maxDistance).toFixed(2));
+    			//speed = (this.speed > 1) ? this.speed : 1;
 
+    			this.distance = this.distance + speed;
+    			this.x = Math.cos(this.angle) * this.distance;
+    			this.y = Math.sin(this.angle) * this.distance;
+
+    			this.coords.pop();
+    			this.coords.unshift([this.x, this.y]);
+
+    			if(this.distance >= this.maxDistance || this.alreadyLoaded){//If we've moved our pile of debris out to where it needs to be, 
+    				if(this.alreadyLoaded){
+    					this.x = Math.cos(this.angle) * this.maxDistance;
+    					this.y = Math.sin(this.angle) * this.maxDistance;
+    				}
+
+    				let image = newImages['debris'];
+
+    				this.x = (this.x -  image.width/2).toFixed(0)*1;
+    				this.y = (this.y - image.height/2).toFixed(0)*1;
+
+    				this.rect = {
+    					x:this.x,
+    					y:this.y,
+    					width:image.width,
+    					height:image.height
+    				}
+
+    				this.calculate = function(){//this.calculate gets overwritten completely.
+    					this.mouseCalculate();
+    				}
+    				this.draw = function(){//As does this.draw
+    					ctx.drawImage(newImages['debris'], this.x, this.y);
+    				}
+    			}
     		};
     		this.draw = function(){
-    		
-    		};
-    		this.onClick = function(){
+    			var gradient = ctx.createRadialGradient(this.x, this.y, 50, this.x, this.y, 0);
+    			gradient.addColorStop(0, 'rgba(30, 30, 200, 0)');
+    			gradient.addColorStop(1, 'rgba(30, 30, 200, 1)');
 
+    			var trailGradient = ctx.createRadialGradient(this.x, this.y, 20, this.x, this.y, 200);
+    			trailGradient.addColorStop(0, 'rgba(30, 30, 200, 0)');
+    			trailGradient.addColorStop(1, 'rgba(30, 30, 200, 1)');
+
+    			ctx.fillStyle = gradient;
+
+    			ctx.beginPath();
+    			ctx.arc(this.x, this.y, 50, 0, Math.PI*2);
+    			ctx.fill();
+
+
+    			ctx.strokeStyle = trailGradient;
+
+    			this.coords.forEach(function(element, index){//Then we loop through each of the trailcoords,
+		    		ctx.lineWidth = this.coords.length - index;//Set width of this section to the opposite of the section's index.
+		    		ctx.beginPath();//Begin drawing
+
+		    		let lastCoordsX = (this.coords[index-1]) ? this.coords[index-1][0] : this.x;//Set coordinates for the last part of the trail, if there aren't any, use the current coordinates.
+		    		let lastCoordsY = (this.coords[index-1]) ? this.coords[index-1][1] : this.y;//Set coordinates for the last part of the trail, if there aren't any, use the current coordinates.
+
+		    		ctx.moveTo(lastCoordsX, lastCoordsY);//Go to where the trail was last
+		    		ctx.lineTo(element[0], element[1]);//Draw over to where it should be next
+
+		    		ctx.stroke();//Draw and end drawing.
+		    	}.bind(this));
+
+		    	ctx.lineWidth = 1;//Set line width back to normal
+    		};
+
+    		this.onClick = function(){
+    			if(this.open)return;
+    			this.open = true;
+
+    			localPlayer.giveStuff(this.name.capitalize(), this.inventory, function(){
+    				this.open = false;
+    			}.bind(this));
     		};
     	}
     }
 
     function mapItem(type){
     	mapItems[type].call(this);
+    	//Here we assign universal default values
     	this.x = 0;
     	this.y = 0;
 
+    	this.mouseCalculate = function(){//this does the math for hovering over things, and tooltips.
+    		if(!currentMouseEvent || !this.rect)return;//If we don't know anything about the mouse, or where the mouse needs to be, we can't do mouse calculations.
+
+			let x = currentMouseEvent.clientX + ctx.x;//This is a shortcut and small optimization.
+			let y = currentMouseEvent.clientY + ctx.y;//This is a shortcut and small optimization.
+			let rect = this.rect;//This is just a shortcut
+
+			if((x > rect.x && x < rect.x + rect.width) && (y > rect.y && y < rect.y + rect.height)){//If the mouse is where it needs to be
+				let toolTipBox = $('#toolTipBox');//This is a shortcut and an optimization, yet again.
+
+				if(currentMouseEvent.toolTipper !== this && this.toolTipper){//If the mouse has moved, but hasn't left the rect,
+					currentMouseEvent.toolTipper = this;//then claim that mouseEvent
+
+					toolTipBox.css('left', currentMouseEvent.clientX);//And move the tooltip accordingly.
+					toolTipBox.css('top', currentMouseEvent.clientY);//And move the tooltip accordingly.
+				}
+
+				if(currentMouseEvent.toolTipper == this){//If the tooltip's already been initialized,
+					toolTipBox.show();//Make sure some nimwit hasn't hidden it,
+					if(toolTipBox.height() < this.toolTipHeight)toolTipBox.height('+=5');//expand it if neccessary
+					if(toolTipBox.width() < this.toolTipWidth)toolTipBox.width('+=5');//expand it if neccessary
+					else if(toolTipBox.height() >= this.toolTipHeight)toolTipBox.contents().show();//And show the contents if neccessary.
+				}
+
+				else {//If the mouse is inside of the rect but the tooltip isn't initialized,
+					//Claim it as so,
+					currentMouseEvent.toolTipper = this;//this guy is for keeping track of if the mouse is inside of the rect.
+					this.toolTipper = true;//And this guy is for keeping track of whether or not it's left the rect
+					
+					toolTipBox.show();//unhide,
+					toolTipBox.empty();//And empty out the remnants of the last tooltip, if any
+
+					toolTipBox.height('auto');//Let it expand as needed
+					toolTipBox.width('auto');//Let it expand as needed
+
+					toolTipBox.append('<h3 style = font-size:16px;>' + this.name.capitalize() + '</h3>');//Stick some content in there
+					//toolTipBox.append('<hr>');
+					toolTipBox.append('<p style = font-size:12px;>' + this.toolTip + '</p>');//Stick some content in there
+
+					toolTipBox.css('left', currentMouseEvent.clientX);//Position it according to the mouse position
+					toolTipBox.css('top', currentMouseEvent.clientY);//Position it according to the mouse position
+
+					this.toolTipHeight = toolTipBox.height();//Record it's size as a full box
+					this.toolTipWidth = toolTipBox.width();//Record it's size as a full box
+
+					toolTipBox.height(0);//Make it tiny
+					toolTipBox.width(0);//Make it tiny
+
+					toolTipBox.contents().hide();//And hide it's innards.
+				}
+
+				if(pressedKeys['left-button'])this.onClick();//Lastly, if they click inside of this.rect, call the associated function.
+			}
+			else {//If the mouse is not where it needs to be,
+				if(currentMouseEvent.toolTipper == this){//If we think we're in but we're not,
+					$('#toolTipBox').hide();//Hide it,
+					currentMouseEvent.toolTipper = undefined;//And record that we aren't inside of the rect
+				}
+				if(this.toolTipper)this.toolTipper = false;//Here too
+			}
+			
+
+			if(!currentMouseEvent.toolTipper)$('#toolTipBox').hide();//Otherwise, we'll just hide it for good measure.
+		}
+
+    	//The onSpawn will define local default values, and other stuff that needs to happen upon the instantiation of the object.
     	if(this.onSpawn)this.onSpawn();
     }
+
+    //This returns an object that has been turned into whatever the input object's .type is, with any other attributes inside of the input object assigned to the output object.
+    function fleshOutMapObject(element){
+		var elementCache = element;//We'll need a copy of the original input
+		element = new mapItem(element.type);//Because we'll overwrite the original input
+
+		for(let attribute in elementCache){//But then assign any of the attributes of the input object
+			element[attribute] = elementCache[attribute];//to the fleshed out object.
+		}
+		return element;
+	}
 
     //End of environment code
 
@@ -1199,19 +1473,14 @@ function startAdventure(username){
 	socket.on('getMap', function(map){
 		var mapComplete = [];
 		map.forEach(function(element){
-			var elementCache = element;
-			element = new mapItem(element.type);
-
-			for(let attribute in elementCache){
-				element[attribute] = elementCache[attribute];
-			}
-			mapComplete.push(element);
+			element.alreadyLoaded = true;
+			mapComplete.push(fleshOutMapObject(element));
 		});
 		environment = mapComplete;
 	});
 
 	socket.on('insertMapElement', function(element, index){
-		environment.splice(index, 0, element);
+		environment.splice(index, 0, fleshOutMapObject(element));
 	});
 
 	socket.on('removeMapElement', function(index){
@@ -1308,8 +1577,8 @@ function startAdventure(username){
     		type:'rock',
     		img:'imgs/rockBig.png',
     		weakness:'paper',
-    		damageHP:30,
-    		damageArmor:10,
+    		damageHP:60,
+    		damageArmor:20,
     		accuracy:10,
     		deflectionPercentage:70, //amount of damage negated by armor
     		behavior:'basic',
@@ -1318,6 +1587,7 @@ function startAdventure(username){
 	    			looser.armor = looser.armor - this.damageArmor + (Math.round(Math.random()*this.accuracy) - this.accuracy);
 	    			looser.armor = (looser.armor < 0) ? 0 : looser.armor;
 	    			looser.damage(this.damageHP + (Math.round(Math.random()*this.accuracy) - this.accuracy), winner.username);
+	    			socket.emit('statUpdate', 'armor', looser.armor);
 	    		}
     		}
     	},
@@ -1326,7 +1596,7 @@ function startAdventure(username){
     		type:'paper',
     		img:'imgs/paperBig.png',
     		weakness:'scissors',
-    		armorBoost:15,
+    		armorBoost:30,
     		behavior:'basic',
     		onSuccessfulAttack:function(looser, winner, attackStats){
     			if(winner == localPlayer){
@@ -1340,8 +1610,8 @@ function startAdventure(username){
     		type:'scissors',
     		img:'imgs/scissorsBig.png',
     		weakness:'rock',
-    		damageHP:10,
-    		damageArmor:30,
+    		damageHP:20,
+    		damageArmor:60,
     		accuracy:5,
     		deflectionPercentage:0, //Amount of damage negated by armor
     		behavior:'basic',
@@ -1350,6 +1620,7 @@ function startAdventure(username){
 	    			looser.armor = looser.armor - this.damageArmor + (Math.round(Math.random()*this.accuracy) - this.accuracy);
 	    			looser.armor = (looser.armor < 0) ? 0 : looser.armor;
 	    			looser.damage(this.damageHP + (Math.round(Math.random()*this.accuracy) - this.accuracy), winner.username);
+	    			socket.emit('statUpdate', 'armor', looser.armor);
 	    		}
     		}
 		}
@@ -1511,6 +1782,9 @@ function startAdventure(username){
         ctx.lineWidth = 1;
     }
 
+    $('body').append('<div id = toolTipBox>Test</div>');
+    $('#toolTipBox').hide();
+
 
 	onkeydown = onkeyup = function(e){
 		e = e || event; //to deal with IE //Although nothing else is IE proof... :D
@@ -1527,10 +1801,9 @@ function startAdventure(username){
 		pressedKeys[buttonNameArray[event.button]] = event.type == 'mousedown';
 		//That way, we can record the state of the button under it's name, instead of just some vague number.
 		currentMouseEvent = event;//This way we can access the mouse's information from anywhere in the program.
-		if(event.type == 'mousedown')$(document).on('mousemove', function(event){//This keeps the mouse's position updated when it moves and the left-button is held down.
-			currentMouseEvent = event;//As you can see here, where we overwrite the currentMouseEvent.
-		});
-		else $(document).off('mousemove');//But if the mouse isn't being held down, we don't need the information(right now, maybe we'll record the mousemovement no matter what later)
+	});
+	$(document).on('mousemove', function(event){//This keeps the mouse's position updated when it moves and the left-button is held down.
+		currentMouseEvent = event;//As you can see, here's where we overwrite the currentMouseEvent.
 	});
 	$(document).on('touchstart touchend', function(event){
 		pressedKeys['left-button'] = event.type == 'touchstart';
@@ -1559,8 +1832,6 @@ function startAdventure(username){
 
         requestAnimationFrame(animationLoop);//And then it calls itself again.
     }
-
-    animationLoop();
 }
 
 //End of Universal Functions

@@ -173,6 +173,107 @@ div.promptBox li{
     bottom:0px;
 }
 
+.itemsPromptBox{
+    width:350px;
+    height:auto;
+    min-height:300px;
+    max-height:500px;
+
+    position:absolute;
+    top:50px;
+    left:50px;
+
+    background-color:rgba(255, 255, 255, 0.07);
+
+    padding:10px;
+    padding-bottom:0px;
+
+    border-radius:5px;
+}
+.itemsPromptBox .inner{
+    width:335px;
+    height:auto;
+    min-height:300px;
+    max-height:450px;
+
+    margin-bottom:5px;
+
+    display:inline-block;
+
+    overflow:hidden;
+
+    background-color:rgba(255, 255, 255, 0.07);
+
+    border-radius:5px 0px 0px 5px;
+}
+.itemsPromptBox .x{
+    position:absolute;
+    top:5px;
+    right:15px;
+
+    font-family:'Roboto', serif;
+    color:grey;
+    font-weight:lighter;
+    font-size:30px;
+}
+.itemsPromptBox .scroll{
+    width:15px;
+    height:auto;
+    min-height:300px;
+    max-height:450px;
+
+    margin-bottom:5px;
+
+    display:inline-block;
+
+    background-color:rgba(255, 255, 255, 0.1);
+
+    border-radius:0px 5px 5px 0px;
+}
+.itemsPromptBox h3{
+    text-align:center;
+
+    font-size:25px;
+
+    margin:0px;
+    margin-bottom:10px;
+}
+
+#toolTipBox{
+    max-width:auto;
+    max-height:auto;
+
+    font-family:'Roboto', serif;
+
+    background-color:rgba(255, 255, 255, 0.1);
+
+    position:absolute;
+    top:100px;
+    left:100px;
+
+    padding:5px;
+
+    border-radius:5px;
+}
+#toolTipBox hr{
+    width:100%;
+    margin-top:0px;
+    border:0px;
+    border-top:1px solid darkgray;
+}
+#toolTipBox p{
+    color:darkgray;
+    margin:0px;
+    text-align:center;
+    max-width:150px;
+    min-width:100px;
+}
+#toolTipBox h3{
+    margin-bottom:2px;
+    font-weight:bold;
+    color:gray;
+}
+
 h1 {
 	text-align:center;
     margin-bottom:0px;
@@ -186,6 +287,15 @@ h2{
     margin-top:0px;
     font-weight:lighter;
     font-size:33px;
+}
+h3{
+    font-family:'Roboto', serif;
+    color:grey;
+    margin-top:0px;
+    font-weight:lighter;
+    font-size:17px;
+    text-align:center;
+}
 hr{
     
     border:1px solid black;
