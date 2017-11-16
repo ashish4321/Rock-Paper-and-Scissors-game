@@ -1188,7 +1188,7 @@ function startAdventure(username){
     			this.angle = (this.angle + 0.001) % (Math.PI * 2);
 
     			if(Math.abs(localPlayer.x) < this.radius*3.2 && Math.abs(localPlayer.y) < this.radius*3.2){
-    				let distanceFromCenter = Math.sqrt(localPlayer.x*localPlayer.x + localPlayer.y*localPlayer.y);
+    				let distanceFromCenter = Math.min(Math.sqrt(localPlayer.x*localPlayer.x + localPlayer.y*localPlayer.y), this.radius*3.2);
     				let angle = Math.atan2(localPlayer.y, localPlayer.x);
     				
     				localPlayer.speed.x = localPlayer.speed.x + Math.cos(angle) * (this.radius*3.2/500 - distanceFromCenter/500);
@@ -1387,7 +1387,7 @@ function startAdventure(username){
 					toolTipBox.contents().hide();//And hide it's innards.
 				}
 
-				if(pressedKeys['left-button'])this.onClick();//Lastly, if they click inside of this.rect, call the associated function.
+				if(this.onClick && pressedKeys['left-button'])this.onClick();//Lastly, if they click inside of this.rect, call the associated function.
 			}
 			else {//If the mouse is not where it needs to be,
 				if(currentMouseEvent.toolTipper == this){//If we think we're in but we're not,
@@ -1624,7 +1624,92 @@ function startAdventure(username){
 	    		}
     		}
 		}
-    }
+	}/*,
+		//crafting misc.
+		'soiled cloth':{
+
+		},
+		'cardboard':{
+
+		},
+		//crafting base materials
+		'can':{
+
+		},
+		'magicked wax':{
+
+		},
+		//base material manipulators
+		'laser lighter':{
+
+		},
+		'magical needle':{
+
+		},
+		//crafting tier two craftable bases
+		'long metal pipe':{
+
+		},
+		'short metal pipe':{
+
+		},
+		'waxen frame':{
+
+		},
+		'waxen tendrils':{
+
+		},
+		//crafting tier two craftable ammunition
+		'metal shard':{
+
+		},
+		'metal ball':{
+
+		},
+		'metal plate':{
+
+		},
+		'waxen blade':{
+
+		},
+		'waxen glob':{
+
+		},
+		'waxen slab':{
+
+		},
+		//crafting teir two findables
+		'kinetic accelerator':{
+
+		},
+		'tapped rune':{
+
+		},
+		//crafting teir two weapons
+		'popper':{//short pipe, KA
+
+		},
+		'blaster':{//three short pipes, 2 KA
+
+		},
+		'boomer':{//long pipe, KA
+
+		},
+		'rifle':{//long pipe, 6 short pipes, 3 KA
+
+		},
+		'tendril scepter':{//three tendril, TR
+
+		},
+		'tendril loop':{//five tendril, TR
+
+		},
+		'tendril trident':{//tendril frame, three tendril, TR
+
+		},
+		'tendril launcher':{//tendril frame, seven tendril, 2 TR
+
+		}*/
 
     var itemBehaviors = {
     	'basic':function(victim, attacker, attackStats){

@@ -17,6 +17,158 @@ var environment = [{
 	y:0
 }];
 
+
+var trashLootTable = {
+	//basic
+	'rock':{
+		rarity:60,
+		quanity:[3, 10]
+	},
+	'paper':{
+		rarity:60,
+		quanity:[3, 10]
+	},
+	'scissors':{
+		rarity:60,
+		quanity:[3, 10]
+	},
+	//crafting misc.
+	'soiled cloth':{
+		rarity:40,
+		quanity:[1, 2]
+	},
+	'cardboard':{
+		rarity:80,
+		quanity:[3, 5]
+	},
+	//crafting base materials
+	'can':{
+		rarity:65,
+		quanity:[3, 5]
+	},
+	'magicked wax':{
+		rarity:90,
+		quanity:1
+	},
+	//base material manipulators
+	'laser lighter':{
+		rarity:5,
+		quanity:1
+	},
+	'magical needle':{
+		rarity:10,
+		quanity:1
+	},
+	//crafting tier two craftable base materials
+	'long metal pipe':{
+		rarity:0.35,
+		quanity:1
+	},
+	'short metal pipe':{
+		rarity:1,
+		quanity:1
+	},
+	'waxen frame':{
+		rarity:0.05,
+		quanity:1
+	},
+	'waxen tendrils':{
+		rarity:2,
+		quanity:1
+	},
+	//crafting tier two craftable ammunition
+	'metal shard':{
+		rarity:10,
+		quanity:1
+	},
+	'metal ball':{
+		rarity:10,
+		quanity:1
+	},
+	'metal plate':{
+		rarity:10,
+		quanity:1
+	},
+	'waxen blade':{
+		rarity:10,
+		quanity:1
+	},
+	'waxen glob':{
+		rarity:10,
+		quanity:1
+	},
+	'waxen slab':{
+		rarity:10,
+		quanity:1
+	},
+	//crafting teir two findables
+	'kinetic accelerator':{
+		rarity:2.5,
+		quanity:1
+	},
+	'tapped rune':{
+		rarity:2.5,
+		quanity:1
+	},
+	//crafting teir two weapons
+	'popper':{//short pipe, KA
+		rarity:0.25,
+		quanity:1
+	},
+	'boomer':{//three short pipes, 2 KA
+		rarity:0.1,
+		quanity:1
+	},
+	'blaster':{//long pipe, KA
+		rarity:0.1,
+		quanity:1
+	},
+	'rifle':{//long pipe, 6 short pipes, 3 KA
+		rarity:0.01,
+		quanity:1
+	},
+	'scepter':{//three tendril, TR
+		rarity:0.25,
+		quanity:1
+	},
+	'loopshield':{//five tendril, TR
+		rarity:0.1,
+		quanity:1
+	},
+	'trident':{//tendril frame, three tendril, TR
+		rarity:0.05,
+		quanity:1
+	},
+	'launcher':{//tendril frame, seven tendril, 2 TR
+		rarity:0.01,
+		quanity:1
+	}
+}
+
+
+function fillWithLootFromTable(array, lootTable){
+	for(let lootItemIndex in lootTable){
+		let lootItem = lootTable[lootItemIndex];
+
+		if(Math.random()*100 < lootItem.rarity){
+			
+			if(lootItem.rarity.isArray){
+				console.log(lootItemIndex);
+				let amount = Math.floor(Math.random() * (lootItem.quanity[1] - lootItem.quanity[0])) + lootItem.quanity[0];
+				for(var i = 0; i < amount; i++){
+					array.push({
+						name:lootItemIndex
+					});
+				}
+			}
+			else array.push({
+				name:lootItemIndex
+			});
+		}
+	}
+	console.log(array);
+}
+
 var trashCounter = 0;
 function addTrash(){
 	if(trashCounter < 10){
@@ -26,7 +178,7 @@ function addTrash(){
 			type:'trash',
 			maxDistance:Math.round(Math.random()*(500)) + 1200,
 			angle:Math.random()*(Math.PI*2),
-			inventory:[]
+			inventory:fillWithLootFromTable([], trashLootTable)
 		}
 		environment.push(element);
 
@@ -36,6 +188,9 @@ function addTrash(){
 	setTimeout(addTrash, 10000);
 }
 addTrash();
+
+
+
 
 io.on('connection', function(client) {  
 
