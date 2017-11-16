@@ -153,7 +153,6 @@ function fillWithLootFromTable(array, lootTable){
 		if(Math.random()*100 < lootItem.rarity){
 			
 			if(lootItem.rarity.isArray){
-				console.log(lootItemIndex);
 				let amount = Math.floor(Math.random() * (lootItem.quanity[1] - lootItem.quanity[0])) + lootItem.quanity[0];
 				for(var i = 0; i < amount; i++){
 					array.push({
@@ -166,7 +165,7 @@ function fillWithLootFromTable(array, lootTable){
 			});
 		}
 	}
-	console.log(array);
+	return array;
 }
 
 var trashCounter = 0;
