@@ -4,18 +4,74 @@ var app = express();
 var server = require('http').createServer(app);  
 var io = require('socket.io')(server);
 
+
+//for working with arrays
+function shuffle(array){//Not my code, JavaScript implementation of Fisher-Yates(Knuth) shuffle.
+	var currentIndex = array.length, temporaryValue, randomIndex;
+
+	// While there remain elements to shuffle...
+	while (0 !== currentIndex) {
+
+		// Pick a remaining element...
+		randomIndex = Math.floor(Math.random() * currentIndex);
+		currentIndex -= 1;
+
+		// And swap it with the current element.
+		temporaryValue = array[currentIndex];
+		array[currentIndex] = array[randomIndex];
+		array[randomIndex] = temporaryValue;
+	}
+
+	return array;
+}
+
+function countInArray(array, value) {
+  return array.reduce((n, x) => n + (x.name === value), 0);
+}
+//end of array functions
+
+
+function removeMapItem(index){
+	environment.splice(index, 1);
+	io.emit('removeMapElement', index);
+}
+
 app.use(express.static(__dirname + '/public'));  
 
 app.get('/', function(req, res,next){
     res.sendFile(__dirname + '/public/game.html');
 });
 
+
 var players = [];
-var environment = [{
-	type:'teleporter',
-	x:0,
-	y:0
-}];
+
+
+//Start of item stuffs
+function giveItem(player, item){
+	if(!item.quanity)item.quanity = 1;//make sure the item has a quanity, if it does make it one
+
+	for(let bagIndex in player.inventory){//Go through every bag type thingy in the player's inventory,
+		var bag = player.inventory[bagIndex];//this is a shortcut
+
+		for(let index = 0; index < Object.keys(bag.inventory).length; index++){//Go through every item in the bag's inventory, be that inventory an array or object
+			let bagItemIndex = Object.keys(bag.inventory)[index];
+			let bagItem = bag.inventory[bagItemIndex];//shortcut
+
+			if(bagItem.name === item.name){//if the items are the same,
+				player.inventory[bagIndex].inventory[bagItemIndex].quanity = player.inventory[bagIndex].inventory[bagItemIndex].quanity + item.quanity;//increase the quanity of that item
+				return true;//and let wherever this function was called know that the placement was successful
+			}
+		}
+	
+		//if we've made it here, that means the item isn't already present in the player's inventory,
+		if(bag.slots && bag.inventory.length < bag.slots){//So lets see if the player has enough room for a new slot
+			player.inventory[bagIndex].inventory.push(item);//if they do, put it in the inventory
+			return true;//and let wherever this function was called know that the placement was successful
+		}
+	}
+
+	return false;//If none of the above worked, there was simply not enough room in the inventory, so return false.
+}
 
 
 var trashLootTable = {
@@ -33,7 +89,7 @@ var trashLootTable = {
 		quanity:[3, 10]
 	},
 	//crafting misc.
-	'soiled cloth':{
+	'soiled rag':{
 		rarity:40,
 		quanity:[1, 2]
 	},
@@ -42,24 +98,27 @@ var trashLootTable = {
 		quanity:[3, 5]
 	},
 	//crafting base materials
+	/*
 	'can':{
 		rarity:65,
 		quanity:[3, 5]
-	},
+	},*/
 	'magicked wax':{
 		rarity:90,
 		quanity:1
 	},
 	//base material manipulators
-	'laser lighter':{
-		rarity:5,
+	/*
+	'laser welder':{
+		rarity:10,
 		quanity:1
-	},
+	},*/
 	'magical needle':{
 		rarity:10,
 		quanity:1
 	},
 	//crafting tier two craftable base materials
+	/*
 	'long metal pipe':{
 		rarity:0.35,
 		quanity:1
@@ -67,50 +126,54 @@ var trashLootTable = {
 	'short metal pipe':{
 		rarity:1,
 		quanity:1
-	},
+	},*/
 	'waxen frame':{
 		rarity:0.05,
 		quanity:1
 	},
-	'waxen tendrils':{
+	'waxen tendril':{
 		rarity:2,
 		quanity:1
 	},
 	//crafting tier two craftable ammunition
+	/*
 	'metal shard':{
-		rarity:10,
+		rarity:0,
 		quanity:1
 	},
 	'metal ball':{
-		rarity:10,
+		rarity:0,
 		quanity:1
 	},
 	'metal plate':{
-		rarity:10,
+		rarity:0,
 		quanity:1
 	},
 	'waxen blade':{
-		rarity:10,
+		rarity:0,
 		quanity:1
 	},
 	'waxen glob':{
-		rarity:10,
+		rarity:0,
 		quanity:1
 	},
 	'waxen slab':{
-		rarity:10,
+		rarity:0,
 		quanity:1
-	},
+	},*/
 	//crafting teir two findables
+	/*
 	'kinetic accelerator':{
-		rarity:2.5,
+		rarity:5,
 		quanity:1
 	},
+	*/
 	'tapped rune':{
-		rarity:2.5,
+		rarity:5,
 		quanity:1
 	},
 	//crafting teir two weapons
+	/*
 	'popper':{//short pipe, KA
 		rarity:0.25,
 		quanity:1
@@ -126,23 +189,25 @@ var trashLootTable = {
 	'rifle':{//long pipe, 6 short pipes, 3 KA
 		rarity:0.01,
 		quanity:1
-	},
+	},*/
 	'scepter':{//three tendril, TR
 		rarity:0.25,
 		quanity:1
 	},
+	/*
 	'loopshield':{//five tendril, TR
 		rarity:0.1,
 		quanity:1
 	},
+	*/
 	'trident':{//tendril frame, three tendril, TR
 		rarity:0.05,
 		quanity:1
-	},
+	} /*,
 	'launcher':{//tendril frame, seven tendril, 2 TR
 		rarity:0.01,
 		quanity:1
-	}
+	}*/
 }
 
 
@@ -151,37 +216,51 @@ function fillWithLootFromTable(array, lootTable){
 		let lootItem = lootTable[lootItemIndex];
 
 		if(Math.random()*100 < lootItem.rarity){
-			
-			if(lootItem.rarity.isArray){
-				let amount = Math.floor(Math.random() * (lootItem.quanity[1] - lootItem.quanity[0])) + lootItem.quanity[0];
-				for(var i = 0; i < amount; i++){
-					array.push({
-						name:lootItemIndex
-					});
-				}
+			let amount;
+
+			if(Array.isArray(lootItem.quanity))amount = Math.floor(Math.random() * (lootItem.quanity[1] - lootItem.quanity[0])) + lootItem.quanity[0];
+			else amount = lootItem.quanity;
+
+			for(var i = 0; i < amount; i++){
+				array.push({
+					name:lootItemIndex
+				});
 			}
-			else array.push({
-				name:lootItemIndex
-			});
 		}
 	}
-	return array;
+	return shuffle(array);
 }
 
-var trashCounter = 0;
+//End of item stuffs
+
+
+
+//environment stuffs
+var environment = [{
+	type:'teleporter',
+	x:0,
+	y:0
+}];
+
 function addTrash(){
+	let trashCounter = 0;
+
+	environment.forEach(mapItem => {
+		if(mapItem.type === 'trash')trashCounter++;
+	});
+
 	if(trashCounter < 10){
-		trashCounter = trashCounter + 1;
 
 		let element = {
 			type:'trash',
 			maxDistance:Math.round(Math.random()*(500)) + 1200,
 			angle:Math.random()*(Math.PI*2),
-			inventory:fillWithLootFromTable([], trashLootTable)
 		}
 		environment.push(element);
 
 		io.emit('insertMapElement', element, environment.length - 1);
+
+		element.inventory = fillWithLootFromTable([], trashLootTable);
 	}
 
 	setTimeout(addTrash, 10000);
@@ -199,6 +278,29 @@ io.on('connection', function(client) {
 
 		if(!(usernames.indexOf(username)+1)){
 			players[username] = {};
+			players[username].inventory = {
+				'equipped':{
+					inventory:{
+						'rock':{
+							name:'rock',
+							quanity:1
+						},
+						'paper':{
+							name:'paper',
+							quanity:1
+						},
+						'scissors':{
+							name:'scissors',
+							quanity:1
+						}
+					}
+				},
+				'Default Inventory':{
+					slots:5,
+					color:'186,186,186',
+					inventory:[]
+				}
+			};
 			client.emit('usernameResponse', true);
 			this.username = username;
 		}
@@ -225,7 +327,8 @@ io.on('connection', function(client) {
         //Then tell all clients to make a new slot for him.
         client.broadcast.emit('newPlayer', this.username);
 
-        client.emit('getMap', environment);
+        client.emit('getMap', environment);//And tell him about this world he's about to find himself in.
+        client.emit('recieveInventoryData', this.username, players[this.username].inventory);
 	});
 
 
@@ -265,6 +368,38 @@ io.on('connection', function(client) {
     });
 
 
+    client.on('requestInventoryData', function(index){
+    	if(typeof index === "number"){
+	    	client.emit('recieveInventoryData', index, environment[index].inventory);
+	    	
+	    	if(environment[index].inventory.length === 0)removeMapItem(index);
+    	}
+
+    	else if(players[index]){
+    		client.emit('recieveInventoryData', this.username, players[index].inventory);
+    	}
+    });
+
+    client.on('takeItem', function(takenFromMapIndex, itemName){
+    	let item = {
+    		name:itemName,
+    		quanity:countInArray(environment[takenFromMapIndex].inventory, itemName)
+    	}
+
+    	if(giveItem(players[this.username], item)){
+    		client.emit('recieveInventoryData', this.username, players[this.username].inventory);
+
+	    	environment[takenFromMapIndex].inventory = environment[takenFromMapIndex].inventory.filter(a => a.name !== itemName);
+
+	    	client.emit('recieveInventoryData', takenFromMapIndex, environment[takenFromMapIndex].inventory);
+	    	client.broadcast.emit('recieveInventoryData', takenFromMapIndex, environment[takenFromMapIndex].inventory);
+
+	    	if(environment[takenFromMapIndex].inventory.length === 0)
+	    		removeMapItem(takenFromMapIndex);
+    	}
+
+    	else client.emit('chatMessage', 'Server', "No room! Clear up some space, press the \"F\" key to open your inventory.");
+    });
 });
 
 server.listen(4200);  

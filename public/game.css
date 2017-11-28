@@ -174,7 +174,7 @@ div.promptBox li{
 }
 
 .itemsPromptBox{
-    width:350px;
+    width:355px;
     height:auto;
     min-height:300px;
     max-height:500px;
@@ -183,7 +183,7 @@ div.promptBox li{
     top:50px;
     left:50px;
 
-    background-color:rgba(255, 255, 255, 0.07);
+    background-color:rgba(0, 0, 0, 0.14);
 
     padding:10px;
     padding-bottom:0px;
@@ -191,7 +191,7 @@ div.promptBox li{
     border-radius:5px;
 }
 .itemsPromptBox .inner{
-    width:335px;
+    width:355px;
     height:auto;
     min-height:300px;
     max-height:450px;
@@ -200,11 +200,54 @@ div.promptBox li{
 
     display:inline-block;
 
-    overflow:hidden;
+    overflow-y:auto;
+    overflow-x:hidden;
+
+    background-color:rgba(255, 255, 255, 0.14);
+
+    border-radius:5px;
+}
+.itemsPromptBox .itemBox{
+    width:339px;
+    height:50px;
+
+    font-size:30px;
+
+    border-radius:10px;
+
+    margin:5px;
 
     background-color:rgba(255, 255, 255, 0.07);
+}
+.itemsPromptBox .itemBox:hover{
+    background-color:rgba(255, 255, 255, 0.14);
+}
+.itemsPromptBox .itemBox img{
+    float:left;
 
-    border-radius:5px 0px 0px 5px;
+    padding:1px;
+
+    margin:3px;
+    margin-left:5px;
+}
+.itemsPromptBox .itemBox h3{
+    float:left;
+
+    font-size:25px;
+
+    margin-left:5px;
+    margin-top:10px;
+
+    color:rgb(138,138,138);
+}
+.itemsPromptBox .itemBox .quanity{
+    float:right;
+    margin-right:25px;
+    margin-top:11px;
+
+    color:rgb(148,148,148);
+    font-weight:bold;
+    font-size:22px;
 }
 .itemsPromptBox .x{
     position:absolute;
@@ -216,6 +259,7 @@ div.promptBox li{
     font-weight:lighter;
     font-size:30px;
 }
+/*
 .itemsPromptBox .scroll{
     width:15px;
     height:auto;
@@ -229,7 +273,7 @@ div.promptBox li{
     background-color:rgba(255, 255, 255, 0.1);
 
     border-radius:0px 5px 5px 0px;
-}
+}*/
 .itemsPromptBox h3{
     text-align:center;
 
@@ -237,6 +281,56 @@ div.promptBox li{
 
     margin:0px;
     margin-bottom:10px;
+}
+
+#playerInventory{
+    width:auto;
+}
+#playerInventory .inner{
+    display:inline-block;
+    background-color:rgba(255, 255, 255, 0.14);
+}
+#playerInventory .itemBox{
+    width:40px;
+    height:40px;
+
+    padding:4px;
+    margin:0px;
+    margin-left:5px;
+
+    display:inline-block;
+
+    background-color:rgba(255, 255, 255, 0.07);
+
+    position:relative;
+}
+#playerInventory .itemBox:hover{
+    background-color:rgba(255, 255, 255, 0.14);
+}
+#playerInventory .itemBox img{
+    margin:0px;
+    padding:0px;
+}
+#playerInventory .itemBox .quanity{
+    font-size:12px;
+
+    position:absolute;
+    bottom:-5px;
+    right:-22px;
+}
+#playerInventory hr{
+    width:95%;
+    border-width:2px;
+}
+#playerInventory h4{
+    font-family:'Roboto', serif;
+    font-weight:bold;
+    font-size:15px;
+
+    margin-top:10px;
+    margin-bottom:5px;
+
+    text-align:center;
 }
 
 #toolTipBox{

@@ -831,6 +831,24 @@ function startAdventure(username){
     var localPlayer = new player();//Local player is the one this client is controlling
     localPlayer.username = username;//We'll record his username.
     localPlayer.discreteMode = false;//If this is turned off, then the hotbar box that the player has selected doesn't go red.
+    //Inventory variables
+    localPlayer.inventoryOpenCoolDown = 0;//This helps make opening the inventory more smooth
+    localPlayer.giveStuffPromptsOut = 0;//This records the amount of inventory prompts open
+    localPlayer.inventory = {//This one lil' object right here holds all of the inventory data.
+    	'equipped':{
+    		displayNaturally:false,
+    		inventory:{
+    			'rock':undefined,
+    			'paper':undefined,
+    			'scissors':undefined
+    		}
+    	},
+    	'paper bag':{
+    		slots:5,
+    		displayNaturally:true,
+    		inventory:[]
+    	}
+    }
 
 	localPlayer.keyMaps = {//So we'll give him some controls.
 		'w':function(){//These could be outsourced to a more efficent function.
@@ -863,6 +881,12 @@ function startAdventure(username){
 		},
 		'e':function(){
 			localPlayer.rotation = (localPlayer.rotation + 0.1);
+		},
+		'f':function(){
+			if(localPlayer.inventoryOpenCoolDown - Date.now() < 0){
+				$('#playerInventory').toggle();
+				localPlayer.inventoryOpenCoolDown = Date.now() + 100;
+			}
 		},
 		' ':function(){
 			if(localPlayer.swingRechargeCounter - Date.now() < 0){//If you've not already done so recently.
@@ -1062,8 +1086,77 @@ function startAdventure(username){
     	}, 10000);
     }
 
-    //giveStuff variable declaration
-    localPlayer.giveStuffPromptsOut = 0;
+
+
+    localPlayer.initializeInventory = function(){
+    	$('body').append('<div class = itemsPromptBox id = playerInventory></div>');
+    	let outer = $('#playerInventory');
+    	outer.append('<h3> Inventory </h3>');
+
+    	let startCoords;
+    	outer.on('mousedown', function(event){
+    		startCoords = {
+    			mouseX:event.pageX,
+    			mouseY:event.pageY,
+    			elementX:outer.position().left,
+    			elementY:outer.position().top
+    		}
+    		outer.on('mousemove', function(event){
+	    		outer.css('left', startCoords.elementX + (event.pageX - startCoords.mouseX));
+	    		outer.css('top', startCoords.elementY + (event.pageY - startCoords.mouseY));
+
+	    		event.stopPropagation();
+    		}.bind(this));
+    		return false;
+    	});
+    	outer.on('mouseup', function(){
+    		outer.off('mousemove');
+    	}.bind(this));
+
+
+    	outer.append('<div class = x id = giveStuffXInventory >x</div>');
+    	let x = $('#giveStuffXInventory');
+    	x.on('click', function(event){
+    		outer.hide();
+    	});
+
+
+    	outer.append('<div class = inner id = inventoryStuff></div>');
+    	let stuff = $('#inventoryStuff');
+    	stuff.on('mousedown', function(event){
+    		event.stopPropagation();
+    	});
+    	stuff.css('width', '300px');
+
+
+    	outer.append('<div class = inner id = inventoryDescriptor></div>');
+    	let descriptor = $('#inventoryDescriptor');
+    	descriptor.on('mousedown', function(event){
+    		event.stopPropagation();
+    	});
+    	descriptor.css('margin-left', '10px');
+    	descriptor.css('width', '200px');
+    	
+    	function fillStuff(){
+    		stuff.empty();
+    		for(let bagIndex in localPlayer.inventory){
+    			let bag = localPlayer.inventory[bagIndex];
+    			if(!bag.displayNaturally)return;
+
+    			stuff.append('<h3>' + bagIndex + '</h3>');
+
+    			bag.inventory.forEach(function(item){
+
+    			});
+    		}
+    	}
+
+    	function describe(){
+
+    	}
+    }
+    localPlayer.initializeInventory();
+    $('#playerInventory').hide();
 
     localPlayer.giveStuff = function(giverName, inventory, callBack){
     	this.giveStuffPromptsOut = this.giveStuffPromptsOut + 1;
@@ -1101,6 +1194,7 @@ function startAdventure(username){
 	    		}
     		}
     	}.bind(this));
+
     	
     	outer.append('<div class = x id = giveStuffX' + this.giveStuffPromptsOut + ' >x</div>');
     	let x = $('#giveStuffX' + this.giveStuffPromptsOut);
@@ -1110,13 +1204,35 @@ function startAdventure(username){
     		if(callBack)callBack();
     	});
 
+
     	outer.append('<div class = inner id = giveStuffInnerPrompt' + this.giveStuffPromptsOut + '></div>');
     	let inner = $('#giveStuffInnerPrompt' + this.giveStuffPromptsOut);
     	inner.on('mousedown', function(event){
     		event.stopPropagation();
     	});
 
+
     	outer.append('<div class = scroll></div>');
+
+
+    	let inventoryNoDuplicates = {};
+    	inventory.forEach(item => {
+
+    		if(inventoryNoDuplicates[item.name])
+    			inventoryNoDuplicates[item.name].quanity++;
+
+    		else {
+	    		item.quanity = 1;
+	    		inventoryNoDuplicates[item.name] = item;
+    		}
+    	});
+
+    	for(let itemShellIndex in inventoryNoDuplicates){
+    		let itemShell = inventoryNoDuplicates[itemShellIndex];
+    		inner.append('<div class = itemBox> <h3>' + itemShell.name.capitalize() + '</h3> </div>');
+    		if(itemShell.quanity - 1)
+    			inner.children().last().append('<h3 class = quanity>' + itemShell.quanity + '</h3>');
+    	}
     }
     //End of code for localPlayer
 
@@ -1568,6 +1684,10 @@ function startAdventure(username){
 	var commands = {
 		'toggleDiscrete':function(){
 			localPlayer.discreteMode = !localPlayer.discreteMode;
+		},
+		'justLikeJacob 1':function(){
+			pressedKeys[' '] = true;
+			pressedKeys['q'] = true;
 		}
 	}
 	
@@ -1624,7 +1744,7 @@ function startAdventure(username){
 	    		}
     		}
 		}
-	}/*,
+	};/*,
 		//crafting misc.
 		'soiled cloth':{
 
@@ -1874,7 +1994,7 @@ function startAdventure(username){
 	onkeydown = onkeyup = function(e){
 		e = e || event; //to deal with IE //Although nothing else is IE proof... :D
 
-		if(e.key == 'Enter')e.preventDefault();//If it's enter, we don't need the weird default logic for that to be run.
+		if(e.key == 'Enter' || e.key == 'Tab')e.preventDefault();//we don't need the weird default logic to be run, for enter
 
 		pressedKeys[e.key] = e.type == 'keydown';//Record either the release of this key, or the press of this key. This allows us to not only call things when keys are pressed, but call things for as long as they are.
 	}
