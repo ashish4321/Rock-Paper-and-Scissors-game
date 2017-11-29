@@ -632,6 +632,9 @@ function getLocalPlayer(username){
 			descriptor.css('margin-left', '10px');
 			descriptor.css('width', '200px');
 
+			descriptor.append('<div class = inventoryTopTab id = equippedTab> Equipped </div>');
+			descriptor.append('<div class = inventoryTopTab id = descriptionsTab> Descriptions </div>');
+
 
 		
 		localPlayer.updateInventory = function(){
@@ -669,6 +672,8 @@ function getLocalPlayer(username){
 							stuff.append('<hr style = border-color:rgba(' + bag.color + ',0.2);>');
 						}
 					}
+
+					descriptor.append('');
 				}
 			});
 		}

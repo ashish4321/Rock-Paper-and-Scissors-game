@@ -172,6 +172,14 @@ div.promptBox li{
     position:absolute;
     bottom:0px;
 }
+.hotBarBox .quanity{
+    font-family:'Roboto', serif;
+    font-size:17px;
+
+    position:absolute;
+    top:0px;
+    right:1px;
+}
 
 .itemsPromptBox{
     width:355px;
@@ -289,6 +297,39 @@ div.promptBox li{
 #playerInventory .inner{
     display:inline-block;
     background-color:rgba(255, 255, 255, 0.14);
+}
+#playerInventory #inventoryStuff{
+    height:320px;
+}
+#playerInventory #inventoryDescriptor{
+    position:relative;
+
+    overflow:visible;
+
+    border-radius:0px 0px 5px 5px;
+}
+#playerInventory #inventoryDescriptor .inventoryTopTab{
+    width:50%;
+    height:19px;
+
+    position:absolute;
+    top:-20px;
+
+    font-family:'Roboto', serif;
+    font-size:14px;
+    font-weight:bold;
+    text-align:center;
+
+    padding-top:1px;
+
+    color:darkgray;
+
+    border-radius:5px 5px 0px 0px;
+
+    background-color:rgba(255, 255, 255, 0.21);
+}
+#playerInventory #inventoryDescriptor #descriptionsTab{
+    right:0px;
 }
 #playerInventory .itemBox{
     width:40px;

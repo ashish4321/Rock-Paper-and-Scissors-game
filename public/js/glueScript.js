@@ -604,15 +604,24 @@ function startAdventure(username){
 
 			$('#' + elementName).remove();
 
-			$('body').append('<div id = ' + elementName + ' class = hotBarBox style=left:' + (canvas.width*0.8 - 120 + counter*80) + 'px; > <img src = ' + element.img + '> </div>');
+			$('body').append('<div id = ' + elementName + ' class = hotBarBox style=left:' + (canvas.width*0.8 - 120 + counter*80) + 'px; > </div>');
 			let elmtDiv = $('#' + elementName);
+
 			if(elementName == localPlayer.currentHotbarSelection.name && !localPlayer.discreetMode){
 				elmtDiv.css('border-color', 'rgba(255, 0, 0, 0.115)');
 				elmtDiv.css('background-color', 'rgba(255, 0, 0, 0.1)');
 			}
 
+			refresh();
+
+
 			function refresh(){
 				elmtDiv.html('<img src = ' + element.img + '>');
+
+				let color = elmtDiv.css('border-color').replace(/\s/g, '');
+				color = color.split(',');
+				color = color[0] + ',' + color[1] + ',' + color[2] + ',0.8)';
+				elmtDiv.append('<h4 class = quanity style = color:' + color + '; >' + element.quanity + '</h4>');
 			}
 
 			elmtDiv.on('mouseenter', function(){
